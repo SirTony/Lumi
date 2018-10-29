@@ -39,6 +39,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -52,6 +53,9 @@
     <Compile Include="CommandLineArguments.cs" />
     <Compile Include="Commands\CommandMatcher.cs" />
     <Compile Include="ConfigManager.cs" />
+    <Compile Include="ConsoleEx.cs" />
+    <Compile Include="Prompt.cs" />
+    <Compile Include="Shell\Segments\VariableValueChangedEventArgs.cs" />
     <Compile Include="Util\EnumerableExtensions.cs" />
     <Compile Include="IndentTextWriter.cs" />
     <Compile Include="Kernel32.cs" />
@@ -97,6 +101,9 @@
     <None Include="Lumi.ruleset" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Colorful.Console">
+      <Version>1.2.9</Version>
+    </PackageReference>
     <PackageReference Include="CommandLineParser">
       <Version>2.3.0</Version>
     </PackageReference>

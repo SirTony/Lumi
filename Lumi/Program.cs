@@ -5,8 +5,10 @@ using Lumi.Shell;
 using Lumi.Shell.Segments;
 using Lumi.Shell.Visitors;
 using System;
+using System.Drawing;
 using System.IO;
 using System.Linq;
+using Console = Colorful.Console;
 
 // To silence the catch clauses that use when( !IsDebug )
 #pragma warning disable CS8359 // Filter expression is a constant 'false'
@@ -21,7 +23,7 @@ namespace Lumi
 #if DEBUG
         public const bool IsDebug = true;
 #else
-        public const bool IsDebuf = false;
+        public const bool IsDebug = false;
 #endif
 
         public static string ExecutablePath { get; }
@@ -58,6 +60,45 @@ namespace Lumi
             _printTokens.SetValue( "false" );
             _printTree.SetValue( "false" );
 
+            _noExecute.WatchForChange( delegate ( object sender, VariableValueChangedEventArgs e ) {
+                if( !( sender is VariableSegment variable ) || variable.Scope != VariableSegment.Scopes.Temporary || !variable.Is<bool>() )
+                    return;
+
+                ConsoleEx.WriteWarning(
+                    "Disabling command execution will prevent usage of the set command " +
+                    "preventing execution from being re-enabled FOR THIS PROCESS ONLY." +
+                    "Other Lumi shells will be unaffected."
+                );
+
+                Console.WriteLine();
+                e.Revert = Prompt.YesNo( "Would you like to revert?", true );
+            } );
+
+            VariableSegment.WatchForChange( "ColorScheme.Background", delegate ( object sender, VariableValueChangedEventArgs e ) {
+                if( !( sender is VariableSegment variable ) || variable.Scope != VariableSegment.Scopes.Configuration || !variable.Is<Color>() )
+                    return;
+
+                ConsoleEx.WriteWarning(
+                    "Changing the console window's background color will cause all text to be cleared."
+                );
+
+                Console.WriteLine();
+                e.Revert = Prompt.YesNo( "Would you like to revert?", true );
+
+                if( !e.Revert )
+                {
+                    ConfigManager.Instance.ColorScheme.Apply();
+                    Console.Clear();
+                }
+            } );
+
+            VariableSegment.WatchForChange( "ColorScheme.Foreground", delegate ( object sender, VariableValueChangedEventArgs e ) {
+                if( !( sender is VariableSegment variable ) || variable.Scope != VariableSegment.Scopes.Configuration || !variable.Is<Color>() || e.Revert )
+                    return;
+
+                ConfigManager.Instance.ColorScheme.Apply();
+            } );
+
             Parser.Default
                   .ParseArguments<CommandLineArguments>( args )
                   .WithParsed( Program.Run );
@@ -73,14 +114,7 @@ namespace Lumi
 
             Console.Title = _defaultTitlte;
 
-            var scheme = ConfigManager.Instance.ColorScheme;
-
-            if( scheme.Background != null )
-                Console.BackgroundColor = scheme.Background.Value;
-
-            if( scheme.Foreground != null )
-                Console.ForegroundColor = scheme.Foreground.Value;
-
+            ConfigManager.Instance.ColorScheme.Apply();
             Console.Clear();
 
             while( true )
@@ -132,7 +166,7 @@ namespace Lumi
             catch( ShellSyntaxException ex ) when( !IsDebug )
             {
                 Console.WriteLine();
-                Error( ex.Message );
+                ConsoleEx.WriteError( ex.Message );
                 Console.WriteLine();
 
                 const int PaddingSize = 10;
@@ -152,12 +186,12 @@ namespace Lumi
                 var line = new string( '─', len );
 
                 Console.WriteLine( section );
-                WriteLineColored( $"{whitespace}^", ConsoleColor.DarkRed );
-                WriteLineColored( $"{line}┘", ConsoleColor.DarkRed );
+                Console.WriteLine( $"{whitespace}^", ConfigManager.Instance.ColorScheme.ErrorColor );
+                Console.WriteLine( $"{line}┘", ConfigManager.Instance.ColorScheme.ErrorColor );
             }
             catch( ProgramNotFoundException ex ) when( !IsDebug )
             {
-                Error( $"'{ex.ProgramName}' is not a known command or executable file" );
+                ConsoleEx.WriteError( $"'{ex.ProgramName}' is not a known command or executable file" );
             }
             catch( Exception ex ) when( !IsDebug )
             {
@@ -175,9 +209,9 @@ namespace Lumi
             var scheme = ConfigManager.Instance.ColorScheme;
 
             Console.Write( "$ " );
-            WriteColored( Environment.UserName, scheme.PromptUserNameColor );
+            Console.Write( Environment.UserName, scheme.PromptUserNameColor );
             Console.Write( "@" );
-            WriteColored( GetCurrentDirectory(), scheme.PromptDirectoryColor );
+            Console.Write( GetCurrentDirectory(), scheme.PromptDirectoryColor );
             Console.Write( "> " );
         }
 
@@ -189,29 +223,6 @@ namespace Lumi
             return current.ToLowerInvariant().StartsWith( home ) && ConfigManager.Instance.UseTilde
                  ? $"~{current.Substring( home.Length )}"
                  : current;
-        }
-
-        private static void Error( string message )
-            => WriteLineColored( $"ERROR: {message}", ConfigManager.Instance.ColorScheme.Error );
-
-        private static void WriteColored( string text, ConsoleColor? fore )
-        {
-            if( fore == null )
-            {
-                Console.Write( text );
-                return;
-            }
-
-            var current = Console.ForegroundColor;
-            Console.ForegroundColor = fore.Value;
-            Console.Write( text );
-            Console.ForegroundColor = current;
-        }
-
-        private static void WriteLineColored( string text, ConsoleColor? fore )
-        {
-            WriteColored( text, fore );
-            Console.WriteLine();
         }
     }
 }

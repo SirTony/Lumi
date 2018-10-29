@@ -46,15 +46,7 @@ namespace Lumi.Config
 
             Default = new ConfigManager
             {
-                ColorScheme = new ColorScheme
-                {
-                    Foreground = ConsoleColor.Black,
-                    Background = ConsoleColor.White,
-                    Error = ConsoleColor.DarkRed,
-                    PromptUserNameColor = ConsoleColor.DarkGreen,
-                    PromptDirectoryColor = ConsoleColor.DarkMagenta
-                },
-
+                ColorScheme = new ColorScheme(),
                 UseTilde = true,
                 Persistent = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase ),
                 Temporary = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase )

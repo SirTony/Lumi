@@ -59,21 +59,21 @@ namespace Lumi.Shell
 
             var segment = this.Parse();
 
-            if( !this.IsNext( ShellTokenKind.EndOfInput ) )
-            {
-                token = this.Peek();
+            //if( !this.IsNext( ShellTokenKind.EndOfInput ) )
+            //{
+            //    token = this.Peek();
 
-                switch( token.Kind )
-                {
-                    // special error message for unescaped URLs
-                    case ShellTokenKind.Colon:
-                        throw new ShellSyntaxException(
-                            $"unexpected colon. If it is part of a URL, please escape with quotes (e.g. \"http://example.com\")",
-                            token.Index,
-                            token.Index
-                        );
-                }
-            }
+            //    switch( token.Kind )
+            //    {
+            //        // special error message for unescaped URLs
+            //        case ShellTokenKind.Colon:
+            //            throw new ShellSyntaxException(
+            //                $"unexpected colon. If it is part of a URL, please escape with quotes (e.g. \"http://example.com\")",
+            //                token.Index,
+            //                token.Index
+            //            );
+            //    }
+            //}
 
             this.Take( ShellTokenKind.EndOfInput, token );
             return segment;

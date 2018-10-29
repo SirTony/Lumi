@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
 
@@ -7,7 +8,7 @@ namespace Lumi
 {
     public sealed class ValueConverter
     {
-        public delegate object Delegate( object value, Type targetType );
+        public delegate (bool, object) Delegate( object value, Type targetType );
 
         public static IReadOnlyList<Type> IntegralTypes { get; }
         public static IReadOnlyList<Type> FloatTypes { get; }
@@ -41,7 +42,17 @@ namespace Lumi
         }
 
         public ValueConverter( IDictionary<Type, Delegate> table = null )
-            => this._table = table ?? new Dictionary<Type, Delegate>();
+        {
+            this._table = table ?? new Dictionary<Type, Delegate>();
+
+            this._table[typeof( Color )] = delegate ( object value, Type targetType ) {
+                if( targetType != typeof( Color ) )
+                    return (false, null);
+
+                try { return (true, ColorTranslator.FromHtml( value.ToString() )); }
+                catch { return (false, null); }
+            };
+        }
 
         public void Add( Type type, Delegate dg )
             => this._table.Add( type, dg );
@@ -50,11 +61,8 @@ namespace Lumi
         {
             var type = value.GetType();
 
-            if( this._table.TryGetValue( type, out var dg ) )
-            {
-                try { return (true, dg( value, targetType )); }
-                catch { }
-            }
+            if( this._table.TryGetValue( targetType, out var dg ) )
+                return dg( value, targetType );
 
             if( targetType.IsConstructedGenericType && typeof( Nullable<> ).IsAssignableFrom( targetType.GetGenericTypeDefinition() ) )
             {

@@ -16,13 +16,15 @@ namespace Lumi.Shell
                 ['$'] = ShellTokenKind.Dollar,
                 ['#'] = ShellTokenKind.Octothorpe,
                 [';'] = ShellTokenKind.Semicolon,
-                [':'] = ShellTokenKind.Colon,
+                //[':'] = ShellTokenKind.Colon,
                 ['&'] = ShellTokenKind.Ampersand,
                 ['|'] = ShellTokenKind.Pipe,
                 ['<'] = ShellTokenKind.LeftAngle,
                 ['>'] = ShellTokenKind.RightAngle,
                 ['('] = ShellTokenKind.LeftParen,
-                [')'] = ShellTokenKind.RightParen
+                [')'] = ShellTokenKind.RightParen,
+                ['['] = ShellTokenKind.LeftSquare,
+                [']'] = ShellTokenKind.RightSquare,
             };
         }
 

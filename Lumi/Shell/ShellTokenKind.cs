@@ -10,9 +10,11 @@
 
         Semicolon,
 
-        Colon,
+        //Colon,
 
         LeftParen, RightParen,
+
+        LeftSquare, RightSquare,
 
         LeftAngle, RightAngle,
 

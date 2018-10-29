@@ -6,14 +6,15 @@ namespace Lumi.Shell.Parselets
     {
         public IShellSegment Parse( ShellParser parser, IShellSegment parent, ShellToken token )
         {
-            var left = parser.Take( ShellTokenKind.Literal, token );
+            if( parser.Peek().Kind != ShellTokenKind.LeftSquare )
+                return new VariableSegment( parent, parser.Take( ShellTokenKind.Literal, token ).Text );
 
-            if( parser.Peek().Kind != ShellTokenKind.Colon )
-                return new VariableSegment( parent, left.Text );
+            parser.Take( ShellTokenKind.LeftSquare, token );
+            var scope = parser.Take( ShellTokenKind.Literal, token );
+            parser.Take( ShellTokenKind.RightSquare, token );
 
-            parser.Take( ShellTokenKind.Colon, token );
-            var right = parser.Take( ShellTokenKind.Literal, token );
-            return new VariableSegment( parent, left.Text, right.Text );
+            var name = parser.Take( ShellTokenKind.Literal, token );
+            return new VariableSegment( parent, scope.Text, name.Text );
         }
     }
 }
