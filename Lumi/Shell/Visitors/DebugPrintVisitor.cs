@@ -1,7 +1,7 @@
-﻿using Lumi.Shell.Segments;
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
+using Lumi.Shell.Segments;
 
 namespace Lumi.Shell.Visitors
 {
@@ -11,6 +11,14 @@ namespace Lumi.Shell.Visitors
 
         public DebugPrintVisitor( TextWriter writer, int indentSize = 4 )
             => this._writer = new IndentTextWriter( writer, new string( ' ', indentSize ) );
+
+        private void WriteParent( IShellSegment segment )
+        {
+            if( segment.Parent == null )
+                this._writer.WriteLine( "Parent = <none>" );
+            else
+                this._writer.WriteLine( $"Parent = {segment.Parent.GetType().Name}" );
+        }
 
         public void Visit( CommandSegment segment )
         {
@@ -76,7 +84,9 @@ namespace Lumi.Shell.Visitors
 
             this.WriteParent( segment );
             this._writer.WriteLine( $"Redirection = {GetRedirectionName()}" );
-            this._writer.WriteLine( $"{( segment.Mode == RedirectionSegment.RedirectionMode.StdIn ? "Source" : "Destination" )} = {segment.Redirection}" );
+            this._writer.WriteLine(
+                $"{( segment.Mode == RedirectionSegment.RedirectionMode.StdIn ? "Source" : "Destination" )} = {segment.Redirection}"
+            );
             this._writer.Write( "Left = " );
             segment.Left.Accept( this );
 
@@ -112,7 +122,7 @@ namespace Lumi.Shell.Visitors
             ++this._writer.Indent;
 
             this.WriteParent( segment );
-            this._writer.Write( $"Left = " );
+            this._writer.Write( "Left = " );
             segment.Left.Accept( this );
             this._writer.Write( "Right = " );
             segment.Right.Accept( this );
@@ -146,14 +156,6 @@ namespace Lumi.Shell.Visitors
 
             --this._writer.Indent;
             this._writer.WriteLine( "}" );
-        }
-
-        private void WriteParent( IShellSegment segment )
-        {
-            if( segment.Parent == null )
-                this._writer.WriteLine( "Parent = <none>" );
-            else
-                this._writer.WriteLine( $"Parent = {segment.Parent.GetType().Name}" );
         }
     }
 }

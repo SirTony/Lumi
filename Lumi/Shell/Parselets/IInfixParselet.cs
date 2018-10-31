@@ -1,5 +1,4 @@
-﻿
-using Lumi.Shell.Segments;
+﻿using Lumi.Shell.Segments;
 
 namespace Lumi.Shell.Parselets
 {

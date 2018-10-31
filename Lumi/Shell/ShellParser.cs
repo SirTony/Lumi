@@ -1,46 +1,48 @@
-﻿using Lumi.Shell.Parselets;
-using Lumi.Shell.Segments;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using Lumi.Shell.Parselets;
+using Lumi.Shell.Segments;
 
 namespace Lumi.Shell
 {
     internal sealed class ShellParser
     {
-        private static readonly IReadOnlyDictionary<ShellTokenKind, ISegmentParselet> _segments;
-        private static readonly IReadOnlyDictionary<ShellTokenKind, IInfixParselet> _infix;
-        private static readonly IDictionary<ShellTokenKind, ISegmentParselet> _segmentOverrides;
-        private static readonly IDictionary<ShellTokenKind, IInfixParselet> _infixOverrides;
+        private static readonly IReadOnlyDictionary<ShellTokenKind, ISegmentParselet> Segments;
+        private static readonly IReadOnlyDictionary<ShellTokenKind, IInfixParselet> Infix;
+        private static readonly IDictionary<ShellTokenKind, ISegmentParselet> SegmentOverrides;
+        private static readonly IDictionary<ShellTokenKind, IInfixParselet> InfixOverrides;
+        private readonly int _length;
+
+        private readonly IReadOnlyList<ShellToken> _tokens;
+        private int _index;
+
+        private bool EndOfInput => this._index >= this._length;
 
         static ShellParser()
         {
-            _segments = new Dictionary<ShellTokenKind, ISegmentParselet>
+            ShellParser.Segments = new Dictionary<ShellTokenKind, ISegmentParselet>
             {
                 [ShellTokenKind.Literal] = new CommandParselet(),
                 [ShellTokenKind.Octothorpe] = new InterpolationParselet(),
                 [ShellTokenKind.Dollar] = new VariableParselet()
             };
 
-            _infix = new Dictionary<ShellTokenKind, IInfixParselet>
+            ShellParser.Infix = new Dictionary<ShellTokenKind, IInfixParselet>
             {
                 [ShellTokenKind.RightAngle] = new RedirectionParselet( RedirectionSegment.RedirectionMode.StdOut ),
-                [ShellTokenKind.DoubleRightAngle] = new RedirectionParselet( RedirectionSegment.RedirectionMode.StdErr ),
-                [ShellTokenKind.TripleRightAngle] = new RedirectionParselet( RedirectionSegment.RedirectionMode.StdOutAndErr ),
+                [ShellTokenKind.DoubleRightAngle] =
+                    new RedirectionParselet( RedirectionSegment.RedirectionMode.StdErr ),
+                [ShellTokenKind.TripleRightAngle] =
+                    new RedirectionParselet( RedirectionSegment.RedirectionMode.StdOutAndErr ),
                 [ShellTokenKind.LeftAngle] = new RedirectionParselet( RedirectionSegment.RedirectionMode.StdIn ),
                 [ShellTokenKind.Ampersand] = new SequenceParselet( true ),
                 [ShellTokenKind.Semicolon] = new SequenceParselet( false ),
-                [ShellTokenKind.Pipe] = new PipeParselet(),
+                [ShellTokenKind.Pipe] = new PipeParselet()
             };
 
-            _segmentOverrides = new Dictionary<ShellTokenKind, ISegmentParselet>();
-            _infixOverrides = new Dictionary<ShellTokenKind, IInfixParselet>();
+            ShellParser.SegmentOverrides = new Dictionary<ShellTokenKind, ISegmentParselet>();
+            ShellParser.InfixOverrides = new Dictionary<ShellTokenKind, IInfixParselet>();
         }
-
-        private readonly IReadOnlyList<ShellToken> _tokens;
-        private readonly int _length;
-        private int _index;
-
-        private bool EndOfInput => this._index >= this._length;
 
         public ShellParser( IEnumerable<ShellToken> tokens )
         {
@@ -49,13 +51,19 @@ namespace Lumi.Shell
         }
 
         public bool HasSegment()
-            => _segments.TryGetValue( this.Peek().Kind, out _ );
+            => ShellParser.Segments.TryGetValue( this.Peek().Kind, out var _ );
 
         public IShellSegment ParseAll()
         {
             var token = this.Peek();
             if( token.Kind != ShellTokenKind.Literal && token.Kind != ShellTokenKind.Dollar )
-                throw new ShellSyntaxException( "command line must start with a literal or variable", token.Index, token.Index );
+            {
+                throw new ShellSyntaxException(
+                    "command line must start with a literal or variable",
+                    token.Index,
+                    token.Index
+                );
+            }
 
             var segment = this.Parse();
 
@@ -80,16 +88,16 @@ namespace Lumi.Shell
         }
 
         public void AddOverride( ShellTokenKind kind, ISegmentParselet parselet )
-            => _segmentOverrides[kind] = parselet;
+            => ShellParser.SegmentOverrides[kind] = parselet;
 
         public void AddOverride( ShellTokenKind kind, IInfixParselet parselet )
-            => _infixOverrides[kind] = parselet;
+            => ShellParser.InfixOverrides[kind] = parselet;
 
         public void ClearSegmentOverrides()
-            => _segmentOverrides.Clear();
+            => ShellParser.SegmentOverrides.Clear();
 
         public void ClearInfixOverrides()
-            => _infixOverrides.Clear();
+            => ShellParser.InfixOverrides.Clear();
 
         public void ClearAllOverrides()
         {
@@ -101,7 +109,13 @@ namespace Lumi.Shell
         {
             var token = this.Take();
             if( !this.TryGetSegmentParselet( token.Kind, out var parselet ) )
-                throw new ShellSyntaxException( $"unexpected '{token}' at position {token.Index}, expecting command", token.Index, token.Index );
+            {
+                throw new ShellSyntaxException(
+                    $"unexpected '{token}' at position {token.Index}, expecting command",
+                    token.Index,
+                    token.Index
+                );
+            }
 
             var left = parselet.Parse( this, null, token );
 
@@ -117,7 +131,7 @@ namespace Lumi.Shell
         public ShellToken Peek( int distance = 0 )
         {
             var newIndex = this._index + distance;
-            return newIndex >= this._length || newIndex < 0 ? ( default ) : this._tokens[newIndex];
+            return newIndex >= this._length || newIndex < 0 ? default : this._tokens[newIndex];
         }
 
         public bool IsNext( ShellTokenKind kind )
@@ -139,17 +153,24 @@ namespace Lumi.Shell
         {
             var token = this.Take();
             if( token.Kind != kind )
-                throw new ShellSyntaxException( $"unexpected '{token}', expecting {kind} at position {token.Index}", startToken.Index, token.Index );
+            {
+                throw new ShellSyntaxException(
+                    $"unexpected '{token}', expecting {kind} at position {token.Index}",
+                    startToken.Index,
+                    token.Index
+                );
+            }
+
             return token;
         }
 
         private bool TryGetSegmentParselet( ShellTokenKind kind, out ISegmentParselet parselet )
-            => _segmentOverrides.TryGetValue( kind, out parselet )
-            || _segments.TryGetValue( kind, out parselet );
+            => ShellParser.SegmentOverrides.TryGetValue( kind, out parselet )
+            || ShellParser.Segments.TryGetValue( kind, out parselet );
 
         private bool TryGetInfixParselet( ShellTokenKind kind, out IInfixParselet parselet )
-            => _infixOverrides.TryGetValue( kind, out parselet )
-            || _infix.TryGetValue( kind, out parselet );
+            => ShellParser.InfixOverrides.TryGetValue( kind, out parselet )
+            || ShellParser.Infix.TryGetValue( kind, out parselet );
 
         private Precedence GetPrecedence( out IInfixParselet infix )
             => this.TryGetInfixParselet( this.Peek().Kind, out infix ) ? infix.Precedence : 0;

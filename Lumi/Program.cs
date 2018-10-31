@@ -1,13 +1,14 @@
-﻿using CommandLine;
+﻿using System;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using Lumi.Commands;
 using Lumi.Config;
 using Lumi.Shell;
 using Lumi.Shell.Segments;
 using Lumi.Shell.Visitors;
-using System;
-using System.Drawing;
-using System.IO;
-using System.Linq;
+using Args = PowerArgs.Args;
 using Console = Colorful.Console;
 
 // To silence the catch clauses that use when( !IsDebug )
@@ -18,7 +19,7 @@ namespace Lumi
 {
     internal static class Program
     {
-        private const string _defaultTitlte = "Lumi";
+        private const string DefaultTitle = "Lumi";
 
 #if DEBUG
         public const bool IsDebug = true;
@@ -26,24 +27,25 @@ namespace Lumi
         public const bool IsDebug = false;
 #endif
 
+        public static Assembly Assembly { get; }
         public static string ExecutablePath { get; }
         public static string SourceDirectory { get; }
 
-        private static readonly VariableSegment _noExecute;
-        private static readonly VariableSegment _printTokens;
-        private static readonly VariableSegment _printTree;
+        private static readonly VariableSegment NoExecute;
+        private static readonly VariableSegment PrintTokens;
+        private static readonly VariableSegment PrintTree;
 
         static Program()
         {
-            var asm = typeof( Program ).Assembly;
-            var uri = new Uri( asm.CodeBase );
+            Program.Assembly = typeof( Program ).Assembly;
+            var uri = new Uri( Program.Assembly.CodeBase );
 
-            ExecutablePath = uri.LocalPath;
-            SourceDirectory = Path.GetDirectoryName( uri.LocalPath );
+            Program.ExecutablePath = uri.LocalPath;
+            Program.SourceDirectory = Path.GetDirectoryName( uri.LocalPath );
 
-            _noExecute = new VariableSegment( null, "temp", "__NO_EXECUTE" );
-            _printTokens = new VariableSegment( null, "temp", "__PRINT_TOKENS" );
-            _printTree = new VariableSegment( null, "temp", "__PRINT_TREE" );
+            Program.NoExecute = new VariableSegment( null, "temp", "__NO_EXECUTE" );
+            Program.PrintTokens = new VariableSegment( null, "temp", "__PRINT_TOKENS" );
+            Program.PrintTree = new VariableSegment( null, "temp", "__PRINT_TREE" );
         }
 
         private static void Main( string[] args )
@@ -52,75 +54,90 @@ namespace Lumi
                 e.Cancel = true;
             };
 
+            Console.Title = Program.DefaultTitle;
+            ConfigManager.Instance.ColorScheme.Apply();
+            Console.Clear();
+
             // These need to be set ahead of time because they're temporary
             // so they only live as long as the process, and if we try
             // reading the value before it's been set the variable
             // doesn't actually exist and we'll get an exception.
-            _noExecute.SetValue( "false" );
-            _printTokens.SetValue( "false" );
-            _printTree.SetValue( "false" );
+            Program.NoExecute.SetValue( "false" );
+            Program.PrintTokens.SetValue( "false" );
+            Program.PrintTree.SetValue( "false" );
 
-            _noExecute.WatchForChange( delegate ( object sender, VariableValueChangedEventArgs e ) {
-                if( !( sender is VariableSegment variable ) || variable.Scope != VariableSegment.Scopes.Temporary || !variable.Is<bool>() )
-                    return;
+            Program.NoExecute.WatchForChange(
+                delegate( object sender, VariableValueChangedEventArgs e ) {
+                    if( !( sender is VariableSegment variable )
+                     || variable.Scope != VariableSegment.Scopes.Temporary
+                     || !variable.Is<bool>() )
+                        return;
 
-                ConsoleEx.WriteWarning(
-                    "Disabling command execution will prevent usage of the set command " +
-                    "preventing execution from being re-enabled FOR THIS PROCESS ONLY." +
-                    "Other Lumi shells will be unaffected."
-                );
+                    ConsoleEx.WriteWarning(
+                        "Disabling command execution will prevent usage of the set command "
+                      + "preventing execution from being re-enabled FOR THIS PROCESS ONLY."
+                      + "Other Lumi shells will be unaffected."
+                    );
 
-                Console.WriteLine();
-                e.Revert = Prompt.YesNo( "Would you like to revert?", true );
-            } );
+                    Console.WriteLine();
+                    e.Revert = Prompt.YesNo( "Would you like to revert?", true );
+                }
+            );
 
-            VariableSegment.WatchForChange( "ColorScheme.Background", delegate ( object sender, VariableValueChangedEventArgs e ) {
-                if( !( sender is VariableSegment variable ) || variable.Scope != VariableSegment.Scopes.Configuration || !variable.Is<Color>() )
-                    return;
+            VariableSegment.WatchForChange(
+                "ColorScheme.Background",
+                delegate( object sender, VariableValueChangedEventArgs e ) {
+                    if( !( sender is VariableSegment variable )
+                     || variable.Scope != VariableSegment.Scopes.Configuration
+                     || !variable.Is<Color>() )
+                        return;
 
-                ConsoleEx.WriteWarning(
-                    "Changing the console window's background color will cause all text to be cleared."
-                );
+                    ConsoleEx.WriteWarning(
+                        "Changing the console window's background color will cause all text to be cleared."
+                    );
 
-                Console.WriteLine();
-                e.Revert = Prompt.YesNo( "Would you like to revert?", true );
+                    Console.WriteLine();
+                    e.Revert = Prompt.YesNo( "Would you like to revert?", true );
 
-                if( !e.Revert )
-                {
+                    if( e.Revert ) return;
+
                     ConfigManager.Instance.ColorScheme.Apply();
                     Console.Clear();
                 }
-            } );
+            );
 
-            VariableSegment.WatchForChange( "ColorScheme.Foreground", delegate ( object sender, VariableValueChangedEventArgs e ) {
-                if( !( sender is VariableSegment variable ) || variable.Scope != VariableSegment.Scopes.Configuration || !variable.Is<Color>() || e.Revert )
-                    return;
+            VariableSegment.WatchForChange(
+                "ColorScheme.Foreground",
+                delegate( object sender, VariableValueChangedEventArgs e ) {
+                    if( !( sender is VariableSegment variable )
+                     || variable.Scope != VariableSegment.Scopes.Configuration
+                     || !variable.Is<Color>()
+                     || e.Revert )
+                        return;
 
-                ConfigManager.Instance.ColorScheme.Apply();
-            } );
+                    ConfigManager.Instance.ColorScheme.Apply();
+                }
+            );
 
-            Parser.Default
-                  .ParseArguments<CommandLineArguments>( args )
-                  .WithParsed( Program.Run );
+            var parsed = Args.Parse<CommandLineArguments>( args );
+            if( parsed == null )
+                return;
+
+            Program.Run( parsed );
         }
 
         private static void Run( CommandLineArguments args )
         {
             if( !String.IsNullOrWhiteSpace( args.EvaluateCommand ) )
             {
-                ExecuteCommand( args.EvaluateCommand, args );
+                Program.ExecuteCommand( args.EvaluateCommand, args );
                 return;
             }
 
-            Console.Title = _defaultTitlte;
-
-            ConfigManager.Instance.ColorScheme.Apply();
-            Console.Clear();
-
             while( true )
             {
-                WritePrompt();
-                ExecuteCommand( Console.ReadLine(), args );
+                Program.WritePrompt();
+                Program.ExecuteCommand( Console.ReadLine(), args );
                 Console.WriteLine();
             }
         }
@@ -137,16 +154,16 @@ namespace Lumi
                 var parser = new ShellParser( lexer.Tokenize() );
                 var segment = parser.ParseAll();
 
-                if( args.PrintTokens || _printTokens.As<bool>() )
+                if( args.PrintTokens || Program.PrintTokens.As<bool>() )
                     lexer.Tokenize().ForEach( x => Console.WriteLine( x.ToString( true ) ) );
 
-                if( args.PrintTree || _printTree.As<bool>() )
+                if( args.PrintTree || Program.PrintTree.As<bool>() )
                 {
                     var printer = new DebugPrintVisitor( Console.Out );
                     segment.Accept( printer );
                 }
 
-                if( args.NoExecute || _noExecute.As<bool>() )
+                if( args.NoExecute || Program.NoExecute.As<bool>() )
                     return;
 
                 // The built-in "set" command has to be processed up-front because it depends on
@@ -154,16 +171,17 @@ namespace Lumi
                 // because we use the syntax 'set $cfg:Foo "some value"'
                 // and if we execute the segment the variable will be expanded to it's actual value
                 // which we don't want
-                var result = segment is CommandSegment cmd && cmd.Command.Equals( "set", StringComparison.OrdinalIgnoreCase )
-                    ? BuiltInCommands.SetVariable( cmd.Arguments )
-                    : segment.Execute();
+                var result = segment is CommandSegment cmd
+                          && cmd.Command.Equals( "set", StringComparison.OrdinalIgnoreCase )
+                                 ? BuiltInCommands.SetVariable( cmd.Arguments )
+                                 : segment.Execute();
 
                 Environment.ExitCode = result.ExitCode;
 
                 result.StandardOutput?.ForEach( Console.Out.WriteLine );
                 result.StandardError?.ForEach( Console.Error.WriteLine );
             }
-            catch( ShellSyntaxException ex ) when( !IsDebug )
+            catch( ShellSyntaxException ex ) when( !Program.IsDebug )
             {
                 Console.WriteLine();
                 ConsoleEx.WriteError( ex.Message );
@@ -178,7 +196,8 @@ namespace Lumi
                 if( section.Length > Console.BufferWidth )
                 {
                     const string TrailingEllipsis = " ...";
-                    section = $"{section.Substring( 0, Console.BufferWidth - TrailingEllipsis.Length )}{TrailingEllipsis}";
+                    section =
+                        $"{section.Substring( 0, Console.BufferWidth - TrailingEllipsis.Length )}{TrailingEllipsis}";
                 }
 
                 var len = trim ? PaddingSize + PrefixEllipsis.Length : ex.Start;
@@ -189,18 +208,18 @@ namespace Lumi
                 Console.WriteLine( $"{whitespace}^", ConfigManager.Instance.ColorScheme.ErrorColor );
                 Console.WriteLine( $"{line}┘", ConfigManager.Instance.ColorScheme.ErrorColor );
             }
-            catch( ProgramNotFoundException ex ) when( !IsDebug )
+            catch( ProgramNotFoundException ex ) when( !Program.IsDebug )
             {
                 ConsoleEx.WriteError( $"'{ex.ProgramName}' is not a known command or executable file" );
             }
-            catch( Exception ex ) when( !IsDebug )
+            catch( Exception ex ) when( !Program.IsDebug )
             {
                 Console.WriteLine( ex );
             }
             finally
             {
                 if( String.IsNullOrWhiteSpace( args.EvaluateCommand ) )
-                    Console.Title = _defaultTitlte;
+                    Console.Title = Program.DefaultTitle;
             }
         }
 
@@ -211,7 +230,7 @@ namespace Lumi
             Console.Write( "$ " );
             Console.Write( Environment.UserName, scheme.PromptUserNameColor );
             Console.Write( "@" );
-            Console.Write( GetCurrentDirectory(), scheme.PromptDirectoryColor );
+            Console.Write( Program.GetCurrentDirectory(), scheme.PromptDirectoryColor );
             Console.Write( "> " );
         }
 
@@ -221,8 +240,8 @@ namespace Lumi
             var current = Directory.GetCurrentDirectory();
 
             return current.ToLowerInvariant().StartsWith( home ) && ConfigManager.Instance.UseTilde
-                 ? $"~{current.Substring( home.Length )}"
-                 : current;
+                       ? $"~{current.Substring( home.Length )}"
+                       : current;
         }
     }
 }

@@ -4,10 +4,10 @@ namespace Lumi.Shell.Parselets
 {
     internal sealed class SequenceParselet : IInfixParselet
     {
-        public Precedence Precedence { get; } = Precedence.Sequence;
         public bool Safe { get; }
 
         public SequenceParselet( bool safe ) => this.Safe = safe;
+        public Precedence Precedence { get; } = Precedence.Sequence;
 
         public IShellSegment Parse( ShellParser parser, IShellSegment parent, IShellSegment left, ShellToken token )
         {

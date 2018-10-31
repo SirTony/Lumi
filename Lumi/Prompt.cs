@@ -1,16 +1,16 @@
 ﻿using System.Text.RegularExpressions;
-using Console = Colorful.Console;
+using Colorful;
 
 namespace Lumi
 {
     internal static class Prompt
     {
-        private static readonly Regex _yesNoRegex;
+        private static readonly Regex YesNoRegex;
 
-        static Prompt()
-        {
-            _yesNoRegex = new Regex( "^y|yes?|no?$", RegexOptions.Compiled | RegexOptions.IgnoreCase );
-        }
+        static Prompt() => Prompt.YesNoRegex = new Regex(
+                               "^y|yes?|no?$",
+                               RegexOptions.Compiled | RegexOptions.IgnoreCase
+                           );
 
         public static bool YesNo( string message, bool defaultValue )
         {
@@ -20,7 +20,7 @@ namespace Lumi
             Console.Write( $"{message} [{y}/{n}] " );
             var answer = Console.ReadLine().Trim().ToLowerInvariant();
 
-            return _yesNoRegex.IsMatch( answer ) && answer[0] == 'y' ? true : defaultValue;
+            return Prompt.YesNoRegex.IsMatch( answer ) && answer[0] == 'y' ? true : defaultValue;
         }
     }
 }

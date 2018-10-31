@@ -1,10 +1,10 @@
-﻿using Lumi.Commands;
-using Lumi.Shell.Visitors;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using Lumi.Commands;
+using Lumi.Shell.Visitors;
 
 namespace Lumi.Shell.Segments
 {
@@ -12,13 +12,6 @@ namespace Lumi.Shell.Segments
     {
         public string Command { get; }
         public IReadOnlyList<IShellSegment> Arguments { get; }
-        public IShellSegment Parent { get; set; }
-
-        public T Accept<T>( ISegmentVisitor<T> visitor )
-            => visitor.Visit( this );
-
-        public void Accept( ISegmentVisitor visitor )
-            => visitor.Visit( this );
 
         public CommandSegment( IShellSegment parent, string command, params IShellSegment[] args )
         {
@@ -27,10 +20,26 @@ namespace Lumi.Shell.Segments
             this.Arguments = args ?? new IShellSegment[0];
         }
 
+        private void Proc_OutputDataReceived( object sender, DataReceivedEventArgs e )
+            => throw new NotImplementedException();
+
+        public override string ToString()
+            => this.Arguments.Count == 0
+                   ? ShellUtil.Escape( this.Command )
+                   : $"{ShellUtil.Escape( this.Command )} {this.Arguments.Select( x => x.ToString() ).Join( " " )}";
+
+        public IShellSegment Parent { get; set; }
+
+        public T Accept<T>( ISegmentVisitor<T> visitor )
+            => visitor.Visit( this );
+
+        public void Accept( ISegmentVisitor visitor )
+            => visitor.Visit( this );
+
         public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
         {
-            if( BuiltInCommands.TryFind( this.Command, out var func ) )
-                return func( this.Arguments );
+            if( BuiltInCommands.TryExecute( this.Command, this.Arguments, out var result ) )
+                return result;
 
             var args = new List<string>();
             foreach( var segment in this.Arguments )
@@ -38,6 +47,7 @@ namespace Lumi.Shell.Segments
                 switch( segment )
                 {
                     case CommandSegment literal:
+
                         // Arguments should never contain a CommandSegment
                         // but if it does just ignore the sub-arguments (if there are any)
                         args.Add( literal.Command );
@@ -48,7 +58,7 @@ namespace Lumi.Shell.Segments
                         break;
 
                     default:
-                        var result = segment.Execute( capture: true );
+                        result = segment.Execute( capture: true );
                         if( result.ExitCode != 0 )
                             return result;
 
@@ -68,7 +78,7 @@ namespace Lumi.Shell.Segments
                     UseShellExecute = false,
                     RedirectStandardInput = inputs?.Count > 0,
                     RedirectStandardOutput = capture,
-                    RedirectStandardError = capture,
+                    RedirectStandardError = capture
                 };
 
                 var proc = Process.Start( info );
@@ -100,16 +110,7 @@ namespace Lumi.Shell.Segments
                 throw new ProgramNotFoundException( ShellUtil.Escape( this.Command ), ex );
             }
 
-            DataReceivedEventHandler Appender( List<string> target )
-            {
-                return ( object _, DataReceivedEventArgs e ) => target.Add( e.Data );
-            }
+            DataReceivedEventHandler Appender( List<string> target ) { return ( _, e ) => target.Add( e.Data ); }
         }
-
-        private void Proc_OutputDataReceived( object sender, DataReceivedEventArgs e ) => throw new NotImplementedException();
-        public override string ToString()
-            => this.Arguments.Count == 0
-             ? ShellUtil.Escape( this.Command )
-             : $"{ShellUtil.Escape( this.Command )} {this.Arguments.Select( x => x.ToString() ).Join( " " )}";
     }
 }

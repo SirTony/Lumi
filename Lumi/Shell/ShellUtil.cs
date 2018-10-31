@@ -1,9 +1,9 @@
-﻿using Lumi.Config;
-using Lumi.Shell.Segments;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Lumi.Config;
+using Lumi.Shell.Segments;
 
 namespace Lumi.Shell
 {
@@ -14,7 +14,9 @@ namespace Lumi.Shell
             if( segment.Any( c => c == '"' ) )
                 segment = segment.Replace( "\"", "\\\"" );
 
-            return segment.Any( c => Char.IsWhiteSpace( c ) || ShellLexer.IsSpecialChar( c ) ) ? $"\"{segment}\"" : segment;
+            return segment.Any( c => Char.IsWhiteSpace( c ) || ShellLexer.IsSpecialChar( c ) )
+                       ? $"\"{segment}\""
+                       : segment;
         }
 
         public static IEnumerable<string> Escape( IEnumerable<string> parts )
@@ -30,17 +32,17 @@ namespace Lumi.Shell
         {
             if( !path.StartsWith( "~" ) || !ConfigManager.Instance.UseTilde )
                 return path;
-            else
-            {
-                var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );
-                var withoutTilde = path.Substring( 1 )
-                                       .Replace( Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar )
-                                       .Trim( Path.DirectorySeparatorChar )
-                                       .Split( new[] { Path.DirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries );
+            var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );
+            var withoutTilde = path.Substring( 1 )
+                                   .Replace( Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar )
+                                   .Trim( Path.DirectorySeparatorChar )
+                                   .Split(
+                                        new[] { Path.DirectorySeparatorChar },
+                                        StringSplitOptions.RemoveEmptyEntries
+                                    );
 
-                var newPath = Path.Combine( withoutTilde.Prepend( home ).ToArray() );
-                return Kernel32.GetWindowsPhysicalPath( newPath );
-            }
+            var newPath = Path.Combine( withoutTilde.Prepend( home ).ToArray() );
+            return Kernel32.GetWindowsPhysicalPath( newPath );
         }
     }
 }

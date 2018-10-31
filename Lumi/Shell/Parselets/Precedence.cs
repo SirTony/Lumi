@@ -3,9 +3,8 @@
     internal enum Precedence
     {
         Invalid,
-
         Sequence,
         Pipe,
-        Redirection,
+        Redirection
     }
 }

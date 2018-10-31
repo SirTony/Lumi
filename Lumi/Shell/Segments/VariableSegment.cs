@@ -1,10 +1,10 @@
-﻿using Lumi.Config;
-using Lumi.Shell.Visitors;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Lumi.Config;
+using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
@@ -21,10 +21,7 @@ namespace Lumi.Shell.Segments
             public const string Process = "process";
         }
 
-        private static readonly IDictionary<string, IList<EventHandler<VariableValueChangedEventArgs>>> _watchers;
-
-        static VariableSegment()
-            => _watchers = new Dictionary<string, IList<EventHandler<VariableValueChangedEventArgs>>>( StringComparer.OrdinalIgnoreCase );
+        private static readonly IDictionary<string, IList<EventHandler<VariableValueChangedEventArgs>>> Watchers;
 
         private readonly string _scope;
 
@@ -71,16 +68,17 @@ namespace Lumi.Shell.Segments
         }
 
         public string Name { get; }
-        public IShellSegment Parent { get; set; }
 
-        public T Accept<T>( ISegmentVisitor<T> visitor )
-            => visitor.Visit( this );
-
-        public void Accept( ISegmentVisitor visitor )
-            => visitor.Visit( this );
+        static VariableSegment()
+            => VariableSegment.Watchers =
+                   new Dictionary<string, IList<EventHandler<VariableValueChangedEventArgs>>>(
+                       StringComparer.OrdinalIgnoreCase
+                   );
 
         public VariableSegment( IShellSegment parent, string name )
-            : this( parent, null, name ) { }
+            : this( parent, null, name )
+        {
+        }
 
         public VariableSegment( IShellSegment parent, string scope, string name )
         {
@@ -99,7 +97,7 @@ namespace Lumi.Shell.Segments
             if( !ok )
                 throw new InvalidCastException( $"cannot convert value to type {typeof( T ).Name}" );
 
-            return (T)value;
+            return (T) value;
         }
 
         public bool Is<T>()
@@ -115,55 +113,6 @@ namespace Lumi.Shell.Segments
             }
         }
 
-        public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
-        {
-            var data = new List<string>();
-
-            switch( this.Scope )
-            {
-                case Scopes.Configuration:
-                {
-                    var value = ConfigManager.Instance.GetValueFromPropertyPath( this.Name, IsJsonProperty );
-                    return value == null
-                         ? this.Error()
-                         : ShellResult.Ok( value.ToString() );
-                }
-
-                case Scopes.System:
-                    return GetVariable( EnvironmentVariableTarget.Machine );
-
-                case Scopes.User:
-                    return GetVariable( EnvironmentVariableTarget.User );
-
-                case Scopes.Persistent:
-                {
-                    return ConfigManager.Instance.Persistent.TryGetValue( this.Name, out var result )
-                         ? ShellResult.Ok( result )
-                         : this.Error();
-                }
-
-                case Scopes.Temporary:
-                {
-                    return ConfigManager.Instance.Temporary.TryGetValue( this.Name, out var result )
-                         ? ShellResult.Ok( result )
-                         : this.Error();
-                }
-
-                case Scopes.Process:
-                    return GetVariable( EnvironmentVariableTarget.Process );
-
-                case Scopes.Invalid:
-                default:
-                    return ShellResult.Error( -2, $"{this.ToString()}: invalid variable scope: {this._scope}" );
-            }
-
-            ShellResult GetVariable( EnvironmentVariableTarget target )
-            {
-                var value = Environment.GetEnvironmentVariable( this.Name, target );
-                return value != null ? ShellResult.Ok( value ) : this.Error();
-            }
-        }
-
         public ShellResult SetValue( string value )
             => this.SetValueImpl( value, false );
 
@@ -176,7 +125,8 @@ namespace Lumi.Shell.Segments
             {
                 case Scopes.Configuration:
                 {
-                    var (instance, prop) = ConfigManager.Instance.GetPropertyFromPath( this.Name, IsJsonProperty );
+                    var (instance, prop) =
+                        ConfigManager.Instance.GetPropertyFromPath( this.Name, VariableSegment.IsJsonProperty );
                     var setter = prop?.GetSetMethod( true );
 
                     if( instance == null || prop == null || setter == null )
@@ -201,11 +151,7 @@ namespace Lumi.Shell.Segments
                     }
                     catch( Exception ex )
                     {
-                        var msgs = new[]
-                        {
-                            "set: could not set value. reason:",
-                            ex.Message
-                        };
+                        var msgs = new[] { "set: could not set value. reason:", ex.Message };
 
                         result = ShellResult.Error( -4, msgs );
                     }
@@ -222,14 +168,14 @@ namespace Lumi.Shell.Segments
                     break;
 
                 case Scopes.Persistent:
-                    ConfigManager.Instance.Persistent[this.Name] = value.ToString();
+                    ConfigManager.Instance.Persistent[this.Name] = value;
                     ConfigManager.Save();
-                    result = ShellResult.Ok( value.ToString() );
+                    result = ShellResult.Ok( value );
                     break;
 
                 case Scopes.Temporary:
-                    ConfigManager.Instance.Temporary[this.Name] = value.ToString();
-                    result = ShellResult.Ok( value.ToString() );
+                    ConfigManager.Instance.Temporary[this.Name] = value;
+                    result = ShellResult.Ok( value );
                     break;
 
                 case Scopes.Process:
@@ -238,10 +184,10 @@ namespace Lumi.Shell.Segments
 
                 case Scopes.Invalid:
                 default:
-                    return ShellResult.Error( -2, $"{this.ToString()}: invalid variable scope: {this._scope}" );
+                    return ShellResult.Error( -2, $"{this}: invalid variable scope: {this._scope}" );
             }
 
-            if( !suppressEvent && _watchers.TryGetValue( this.Name, out var handlers ) )
+            if( !suppressEvent && VariableSegment.Watchers.TryGetValue( this.Name, out var handlers ) )
             {
                 // make sure we dont needlessly reset the variable
                 // if multiple handlers trigger a revert.
@@ -265,8 +211,8 @@ namespace Lumi.Shell.Segments
 
             ShellResult SetVariable( EnvironmentVariableTarget target )
             {
-                Environment.SetEnvironmentVariable( this.Name, value.ToString(), target );
-                return ShellResult.Ok( value.ToString() );
+                Environment.SetEnvironmentVariable( this.Name, value, target );
+                return ShellResult.Ok( value );
             }
         }
 
@@ -277,13 +223,13 @@ namespace Lumi.Shell.Segments
 
         public static void WatchForChange( string name, EventHandler<VariableValueChangedEventArgs> handler )
         {
-            if( _watchers.TryGetValue( name, out var list ) )
+            if( VariableSegment.Watchers.TryGetValue( name, out var list ) )
             {
                 list.Add( handler );
                 return;
             }
 
-            _watchers[name] = new List<EventHandler<VariableValueChangedEventArgs>> { handler };
+            VariableSegment.Watchers[name] = new List<EventHandler<VariableValueChangedEventArgs>> { handler };
         }
 
 #pragma warning disable IDE0046 // Convert to conditional expression
@@ -301,5 +247,65 @@ namespace Lumi.Shell.Segments
 
         public override string ToString()
             => this._scope == null ? $"${this.Name}" : $"$[{this._scope}]{this.Name}";
+
+        public IShellSegment Parent { get; set; }
+
+        public T Accept<T>( ISegmentVisitor<T> visitor )
+            => visitor.Visit( this );
+
+        public void Accept( ISegmentVisitor visitor )
+            => visitor.Visit( this );
+
+        public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
+        {
+            var data = new List<string>();
+
+            switch( this.Scope )
+            {
+                case Scopes.Configuration:
+                {
+                    var value = ConfigManager.Instance.GetValueFromPropertyPath(
+                        this.Name,
+                        VariableSegment.IsJsonProperty
+                    );
+                    return value == null
+                               ? this.Error()
+                               : ShellResult.Ok( value.ToString() );
+                }
+
+                case Scopes.System:
+                    return GetVariable( EnvironmentVariableTarget.Machine );
+
+                case Scopes.User:
+                    return GetVariable( EnvironmentVariableTarget.User );
+
+                case Scopes.Persistent:
+                {
+                    return ConfigManager.Instance.Persistent.TryGetValue( this.Name, out var result )
+                               ? ShellResult.Ok( result )
+                               : this.Error();
+                }
+
+                case Scopes.Temporary:
+                {
+                    return ConfigManager.Instance.Temporary.TryGetValue( this.Name, out var result )
+                               ? ShellResult.Ok( result )
+                               : this.Error();
+                }
+
+                case Scopes.Process:
+                    return GetVariable( EnvironmentVariableTarget.Process );
+
+                case Scopes.Invalid:
+                default:
+                    return ShellResult.Error( -2, $"{this}: invalid variable scope: {this._scope}" );
+            }
+
+            ShellResult GetVariable( EnvironmentVariableTarget target )
+            {
+                var value = Environment.GetEnvironmentVariable( this.Name, target );
+                return value != null ? ShellResult.Ok( value ) : this.Error();
+            }
+        }
     }
 }

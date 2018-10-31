@@ -1,5 +1,5 @@
-﻿using Lumi.Shell.Visitors;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Lumi.Shell.Visitors;
 
 namespace Lumi.Shell.Segments
 {

@@ -1,40 +1,41 @@
-﻿using CommandLine;
+﻿using System.Diagnostics.CodeAnalysis;
+using PowerArgs;
 
 namespace Lumi
 {
+    [ArgExceptionBehavior( ArgExceptionPolicy.StandardExceptionHandling )]
+    [SuppressMessage(
+        "ReSharper",
+        "UnusedAutoPropertyAccessor.Local",
+        Justification = "Private setters are needed by PowerArgs"
+    )]
+
+    // ReSharper disable once ClassNeverInstantiated.Global
     internal sealed class CommandLineArguments
     {
-        [Option(
-            'e', "eval",
-            Default = null,
-            MetaValue = "command",
-            Required = false,
-            HelpText = "Execute a command then exit without entering interactive mode"
-        )]
+        [CustomHelpHook]
+        [ArgShortcut( "?" )]
+        [ArgDescription( "Show this help screen." )]
+        public bool Help { get; private set; }
+
+        [ArgDefaultValue( "" )]
+        [ArgShortcut( "e" )]
+        [ArgDescription( "Evaluate a command then exit without entering interactive mode." )]
         public string EvaluateCommand { get; private set; }
 
-        [Option(
-            't', "tokens",
-            Default = null,
-            Required = false,
-            HelpText = "Print all tokens in a command"
-        )]
+        [ArgDefaultValue( false )]
+        [ArgShortcut( ArgShortcutPolicy.NoShortcut )]
+        [ArgDescription( "Print all tokens for a given command." )]
         public bool PrintTokens { get; private set; }
 
-        [Option(
-            'T', "tree",
-            Default = null,
-            Required = false,
-            HelpText = "Print the parse tree for a command"
-        )]
+        [ArgDefaultValue( false )]
+        [ArgShortcut( ArgShortcutPolicy.NoShortcut )]
+        [ArgDescription( "Print the parse tree for a given command." )]
         public bool PrintTree { get; private set; }
 
-        [Option(
-            'E', "no-execute",
-            Default = null,
-            Required = false,
-            HelpText = "Do not execute commands"
-        )]
+        [ArgDefaultValue( false )]
+        [ArgShortcut( "n" )]
+        [ArgDescription( "Parse but do not execute the given command." )]
         public bool NoExecute { get; private set; }
     }
 }

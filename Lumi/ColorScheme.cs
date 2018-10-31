@@ -1,35 +1,35 @@
-﻿using Newtonsoft.Json;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Console = Colorful.Console;
+using Colorful;
+using Newtonsoft.Json;
 
 namespace Lumi
 {
     [JsonObject( MemberSerialization = MemberSerialization.OptIn )]
     internal sealed class ColorScheme
     {
-        [JsonProperty( nameof( Foreground ) )]
-        private Color? _foreground;
-
-        [JsonProperty( nameof( Background ) )]
+        [JsonProperty( nameof( ColorScheme.Background ) )]
         private Color? _background;
 
-        [JsonProperty( nameof( ErrorColor ) )]
+        [JsonProperty( nameof( ColorScheme.ErrorColor ) )]
         private Color? _errorColor;
 
-        [JsonProperty( nameof( WarningColor ) )]
-        private Color? _warningColor;
+        [JsonProperty( nameof( ColorScheme.Foreground ) )]
+        private Color? _foreground;
 
-        [JsonProperty( nameof( NoticeColor ) )]
+        [JsonProperty( nameof( ColorScheme.NoticeColor ) )]
         private Color? _noticeColor;
 
-        [JsonProperty( nameof( PromptUserNameColor ) )]
+        [JsonProperty( nameof( ColorScheme.PromptDirectoryColor ) )]
+        private Color? _promptDirectoryColor;
+
+        [JsonProperty( nameof( ColorScheme.PromptUserNameColor ) )]
         private Color? _promptUserNameColor;
 
-        [JsonProperty( nameof( PromptDirectoryColor ) )]
-        private Color? _promptDirectoryColor;
+        [JsonProperty( nameof( ColorScheme.WarningColor ) )]
+        private Color? _warningColor;
 
         [JsonIgnore]
         public Color Foreground
@@ -107,7 +107,7 @@ namespace Lumi
             var fields = from x in self.GetFields( BindingFlags.NonPublic | BindingFlags.Instance )
                          let attr = x.GetCustomAttribute<JsonPropertyAttribute>()
                          where attr != null
-                         select (attr.PropertyName, (Color?)x.GetValue( this ));
+                         select ( attr.PropertyName, (Color?) x.GetValue( this ) );
 
             value.AppendLine( "{" );
 

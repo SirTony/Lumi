@@ -1,10 +1,10 @@
-﻿using Lumi.Shell;
-using Lumi.Shell.Segments;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
+using System.Reflection;
+using Lumi.Shell;
+using Lumi.Shell.Segments;
+using PowerArgs;
 
 namespace Lumi.Commands
 {
@@ -19,31 +19,60 @@ namespace Lumi.Commands
     */
     internal static class BuiltInCommands
     {
-        private static readonly IDictionary<string, ShellFunction> _functions;
+        private static readonly IDictionary<string, Type> Commands;
 
         static BuiltInCommands()
         {
-            _functions = new Dictionary<string, ShellFunction>
-            {
-                ["cd"] = ChangeDirectory,
-                ["pwd"] = PrintWorkingDirectory,
-                ["exit"] = Exit,
-            };
+            BuiltInCommands.Commands = new Dictionary<string, Type>();
+
+            var commandType = typeof( ICommand );
+            var types = from x in commandType.Assembly.GetTypes()
+                        where commandType.IsAssignableFrom( x )
+                        let ctor = x.GetConstructor(
+                            BindingFlags.Public | BindingFlags.Instance,
+                            null,
+                            Type.EmptyTypes,
+                            null
+                        )
+                        where ctor != null
+                        select ( ( (ICommand) Activator.CreateInstance( x, false ) ).Name, Type: x );
+
+            BuiltInCommands.Commands = types.ToDictionary(
+                pair => pair.Name,
+                pair => pair.Type,
+                StringComparer.OrdinalIgnoreCase
+            );
         }
 
-        public static bool TryFind( string name, out ShellFunction func )
+        public static bool TryExecute( string name, IReadOnlyList<IShellSegment> args, out ShellResult result )
         {
-            foreach( var (k, v) in _functions )
+            if( !BuiltInCommands.Commands.TryGetValue( name, out var type ) )
             {
-                if( String.Equals( k, name, StringComparison.OrdinalIgnoreCase ) )
-                {
-                    func = v;
-                    return true;
-                }
+                // we don't actually use result when this method returns false
+                // so this is really just for clarity.
+                result = ShellResult.Error( -1, $"command '{name}' not found" );
+                return false;
             }
 
-            func = null;
-            return false;
+            var argv = new List<string>();
+            foreach( var item in args )
+            {
+                result = item.Execute( capture: true );
+                if( result.ExitCode != 0 )
+                    return true;
+
+                argv.Add( result.StandardOutput.Join( " " ) );
+            }
+
+            var command = (ICommand) Args.Parse( type, argv.ToArray() );
+            if( command == null )
+            {
+                result = ShellResult.Ok();
+                return true;
+            }
+
+            result = command.Execute();
+            return true;
         }
 
         public static ShellResult SetVariable( IReadOnlyList<IShellSegment> args )
@@ -54,62 +83,13 @@ namespace Lumi.Commands
             if( args[0] is VariableSegment variable )
             {
                 var result = args[1].Execute( capture: true );
-                return result.ExitCode != 0 ? result : variable.SetValue( result.StandardOutput.Join( Environment.NewLine ) );
+                return result.ExitCode != 0
+                           ? result
+                           : variable.SetValue( result.StandardOutput.Join( Environment.NewLine ) );
             }
 
-            return ShellResult.Error( -2, $"set: first argument must be a variable" );
+            return ShellResult.Error( -2, "set: first argument must be a variable" );
         }
-
-        private static ShellResult Exit( IReadOnlyList<IShellSegment> args )
-        {
-            if( args.Count == 0 )
-                Environment.Exit( Environment.ExitCode );
-
-            if( args.Count == 1 && args[0] is TextSegment text )
-            {
-                var success = Int32.TryParse( text.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var code );
-                if( success )
-                    Environment.Exit( code );
-
-                return ShellResult.Error( Int32.MinValue, "exit: exit code must be an integer" );
-            }
-
-            return args.Count > 1
-                ? ShellResult.Error( Int32.MinValue + 1, $"exit: incorrect number of arguments. expecting 0 or 1, got {args.Count}" )
-                : ShellResult.Error( Int32.MinValue + 2, $"exit: incorrect argument type. expecting number, got {args[0].GetFriendlyName()}" );
-        }
-
-        private static ShellResult ChangeDirectory( IReadOnlyList<IShellSegment> args )
-        {
-            if( args.Count == 0 )
-            {
-                Directory.SetCurrentDirectory( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ) );
-                return ShellResult.Ok();
-            }
-
-            if( args.Count == 1 && args[0] is TextSegment text )
-            {
-                var path = Path.GetFullPath( ShellUtil.ProcessTilde( text.Text ) );
-
-                if( File.Exists( path ) )
-                    return ShellResult.Error( -3, $"cd: cannot change directory to '{text.Text}' because it is a file" );
-
-                if( !Directory.Exists( path ) )
-                    return ShellResult.Error( -4, $"cd: cannot change directory to '{text.Text}' because it does not exist" );
-
-                Directory.SetCurrentDirectory( path );
-                return ShellResult.Ok();
-            }
-
-            return args.Count > 1
-                ? ShellResult.Error( -1, $"cd: incorrect number of arguments. expecting 0 or 1, got {args.Count}" )
-                : ShellResult.Error( -2, $"cd: incorrect argument type. expected text, got {args[0].GetFriendlyName()}" );
-        }
-
-        private static ShellResult PrintWorkingDirectory( IReadOnlyList<IShellSegment> args )
-            => args.Count != 0
-             ? ShellResult.Error( -1, "pwd: command does not accept arguments" )
-             : ShellResult.Ok( Directory.GetCurrentDirectory() );
 
         //public static void LoadExtensions( string dir )
         //{

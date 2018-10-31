@@ -1,5 +1,5 @@
-﻿using Lumi.Config;
-using Console = Colorful.Console;
+﻿using Colorful;
+using Lumi.Config;
 
 namespace Lumi
 {
@@ -17,6 +17,14 @@ namespace Lumi
         {
             Console.Write( "[" );
             Console.Write( "ERR", ConfigManager.Instance.ColorScheme.ErrorColor );
+            Console.Write( "] :: " );
+            Console.WriteLine( message );
+        }
+
+        public static void WriteNotice( string message )
+        {
+            Console.Write( "[" );
+            Console.Write( "INF", ConfigManager.Instance.ColorScheme.NoticeColor );
             Console.Write( "] :: " );
             Console.WriteLine( message );
         }

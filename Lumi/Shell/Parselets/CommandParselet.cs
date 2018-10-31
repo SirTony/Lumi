@@ -1,6 +1,6 @@
-﻿using Lumi.Shell.Segments;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using Lumi.Shell.Segments;
 
 namespace Lumi.Shell.Parselets
 {

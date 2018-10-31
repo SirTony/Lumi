@@ -1,19 +1,16 @@
-﻿using Lumi.Shell.Segments;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Lumi.Shell.Segments;
 
 namespace Lumi.Shell
 {
     internal delegate ShellResult ShellFunction( IReadOnlyList<IShellSegment> segments );
 
-    [AttributeUsage( AttributeTargets.Method, AllowMultiple = false, Inherited = true )]
+    [AttributeUsage( AttributeTargets.Method )]
     internal sealed class ShellFunctionAttribute : Attribute
     {
         public string Name { get; }
 
-        public ShellFunctionAttribute( string name = null )
-        {
-            this.Name = name;
-        }
+        public ShellFunctionAttribute( string name = null ) => this.Name = name;
     }
 }

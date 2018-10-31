@@ -1,5 +1,5 @@
-﻿using Lumi.Shell.Visitors;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Lumi.Shell.Visitors;
 
 namespace Lumi.Shell.Segments
 {
@@ -7,13 +7,6 @@ namespace Lumi.Shell.Segments
     {
         public IShellSegment Left { get; }
         public IShellSegment Right { get; }
-        public IShellSegment Parent { get; set; }
-
-        public T Accept<T>( ISegmentVisitor<T> visitor )
-            => visitor.Visit( this );
-
-        public void Accept( ISegmentVisitor visitor )
-            => visitor.Visit( this );
 
         public PipeSegment( IShellSegment parent, IShellSegment left, IShellSegment right )
         {
@@ -22,13 +15,21 @@ namespace Lumi.Shell.Segments
             this.Right = right;
         }
 
+        public override string ToString()
+            => $"{this.Left} | {this.Right}";
+
+        public IShellSegment Parent { get; set; }
+
+        public T Accept<T>( ISegmentVisitor<T> visitor )
+            => visitor.Visit( this );
+
+        public void Accept( ISegmentVisitor visitor )
+            => visitor.Visit( this );
+
         public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
         {
             var left = this.Left.Execute( capture: true );
             return left.ExitCode != 0 ? left : this.Right.Execute( left.StandardOutput, true );
         }
-
-        public override string ToString()
-            => $"{this.Left} | {this.Right}";
     }
 }

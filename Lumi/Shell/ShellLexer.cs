@@ -9,30 +9,28 @@ namespace Lumi.Shell
     {
         private static readonly IReadOnlyDictionary<char, ShellTokenKind> Punctuation;
 
-        static ShellLexer()
-        {
-            Punctuation = new Dictionary<char, ShellTokenKind>
-            {
-                ['$'] = ShellTokenKind.Dollar,
-                ['#'] = ShellTokenKind.Octothorpe,
-                [';'] = ShellTokenKind.Semicolon,
-                //[':'] = ShellTokenKind.Colon,
-                ['&'] = ShellTokenKind.Ampersand,
-                ['|'] = ShellTokenKind.Pipe,
-                ['<'] = ShellTokenKind.LeftAngle,
-                ['>'] = ShellTokenKind.RightAngle,
-                ['('] = ShellTokenKind.LeftParen,
-                [')'] = ShellTokenKind.RightParen,
-                ['['] = ShellTokenKind.LeftSquare,
-                [']'] = ShellTokenKind.RightSquare,
-            };
-        }
-
         private readonly string _commandLine;
         private readonly int _length;
         private int _index;
 
         public bool EndOfInput => this._index >= this._length;
+
+        static ShellLexer() => ShellLexer.Punctuation = new Dictionary<char, ShellTokenKind>
+        {
+            ['$'] = ShellTokenKind.Dollar,
+            ['#'] = ShellTokenKind.Octothorpe,
+            [';'] = ShellTokenKind.Semicolon,
+
+            //[':'] = ShellTokenKind.Colon,
+            ['&'] = ShellTokenKind.Ampersand,
+            ['|'] = ShellTokenKind.Pipe,
+            ['<'] = ShellTokenKind.LeftAngle,
+            ['>'] = ShellTokenKind.RightAngle,
+            ['('] = ShellTokenKind.LeftParen,
+            [')'] = ShellTokenKind.RightParen,
+            ['['] = ShellTokenKind.LeftSquare,
+            [']'] = ShellTokenKind.RightSquare
+        };
 
         public ShellLexer( string commandLine )
         {
@@ -41,7 +39,7 @@ namespace Lumi.Shell
         }
 
         public static bool IsSpecialChar( char c )
-            => Punctuation.ContainsKey( c );
+            => ShellLexer.Punctuation.ContainsKey( c );
 
         public IEnumerable<ShellToken> Tokenize()
         {
@@ -60,7 +58,13 @@ namespace Lumi.Shell
                            || this.TryLexPunctuation( c, out token );
 
                 if( !success )
-                    throw new ShellSyntaxException( $"unexpected character '{c}' (0x{Convert.ToUInt16( c ):X4}) at position {i}", i, i );
+                {
+                    throw new ShellSyntaxException(
+                        $"unexpected character '{c}' (0x{Convert.ToUInt16( c ):X4}) at position {i}",
+                        i,
+                        i
+                    );
+                }
 
                 yield return token;
             }
@@ -70,7 +74,7 @@ namespace Lumi.Shell
 
         private bool TryLexLiteral( char c, out ShellToken token )
         {
-            if( Punctuation.ContainsKey( c ) || Char.IsControl( c ) )
+            if( ShellLexer.Punctuation.ContainsKey( c ) || Char.IsControl( c ) )
             {
                 token = null;
                 return false;
@@ -87,7 +91,9 @@ namespace Lumi.Shell
                 c = this.Peek();
             }
 
-            while( !this.EndOfInput && ( ( isQuoted && c != terminator ) || ( !Char.IsWhiteSpace( c ) && !Char.IsControl( c ) && !Punctuation.ContainsKey( c ) ) ) )
+            while( !this.EndOfInput
+                && ( isQuoted && c != terminator
+                  || !Char.IsWhiteSpace( c ) && !Char.IsControl( c ) && !ShellLexer.Punctuation.ContainsKey( c ) ) )
             {
                 if( c == terminator )
                     break;
@@ -103,7 +109,13 @@ namespace Lumi.Shell
             {
                 var last = this.Take();
                 if( last == default || last != terminator )
-                    throw new ShellSyntaxException( $"unexpected end-of-input, unterminated quoted literal at position {start}", start, this._index );
+                {
+                    throw new ShellSyntaxException(
+                        $"unexpected end-of-input, unterminated quoted literal at position {start}",
+                        start,
+                        this._index
+                    );
+                }
             }
 
             token = new ShellToken( ShellTokenKind.Literal, sb.ToString(), start );
@@ -113,7 +125,7 @@ namespace Lumi.Shell
         private bool TryLexPunctuation( char c, out ShellToken token )
         {
             var start = this._index;
-            if( Punctuation.TryGetValue( c, out var kind ) )
+            if( ShellLexer.Punctuation.TryGetValue( c, out var kind ) )
             {
                 if( kind == ShellTokenKind.RightAngle )
                 {
@@ -142,7 +154,6 @@ namespace Lumi.Shell
         {
             var newIndex = this._index + distance;
             return newIndex >= this._length || newIndex < 0 ? default : this._commandLine[newIndex];
-
         }
 
         private char Take()
@@ -154,8 +165,8 @@ namespace Lumi.Shell
 
         private bool IsNext( string search )
             => this._index + search.Length >= this._length
-             ? false
-             : this._commandLine.Substring( this._index, search.Length ) == search;
+                   ? false
+                   : this._commandLine.Substring( this._index, search.Length ) == search;
 
         private bool TakeIfNext( string search )
         {

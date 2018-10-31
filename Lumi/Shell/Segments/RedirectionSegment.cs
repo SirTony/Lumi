@@ -1,9 +1,9 @@
-﻿using Lumi.Shell.Visitors;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Lumi.Shell.Visitors;
 
 namespace Lumi.Shell.Segments
 {
@@ -12,36 +12,29 @@ namespace Lumi.Shell.Segments
         public enum RedirectionMode
         {
             /// <summary>
-            /// Read all lines from a file and pass it to the process over standard input.
+            ///     Read all lines from a file and pass it to the process over standard input.
             /// </summary>
             StdIn,
 
             /// <summary>
-            /// Write standard output from a process to a file (or null device).
+            ///     Write standard output from a process to a file (or null device).
             /// </summary>
             StdOut,
 
             /// <summary>
-            /// Write standard error from a process to a file (or null device).
+            ///     Write standard error from a process to a file (or null device).
             /// </summary>
             StdErr,
 
             /// <summary>
-            /// Write both standard output and standard error from a process to a file (or null device).
+            ///     Write both standard output and standard error from a process to a file (or null device).
             /// </summary>
-            StdOutAndErr,
+            StdOutAndErr
         }
 
         public RedirectionMode Mode { get; }
         public IShellSegment Left { get; }
         public string Redirection { get; }
-        public IShellSegment Parent { get; set; }
-
-        public T Accept<T>( ISegmentVisitor<T> visitor )
-            => visitor.Visit( this );
-
-        public void Accept( ISegmentVisitor visitor )
-            => visitor.Visit( this );
 
         public RedirectionSegment( IShellSegment parent, IShellSegment left, string redirection, RedirectionMode mode )
         {
@@ -51,6 +44,43 @@ namespace Lumi.Shell.Segments
             this.Redirection = redirection;
         }
 
+        public override string ToString()
+        {
+            string symbol;
+
+            switch( this.Mode )
+            {
+                case RedirectionMode.StdOut:
+                    symbol = ">";
+                    break;
+
+                case RedirectionMode.StdErr:
+                    symbol = ">>";
+                    break;
+
+                case RedirectionMode.StdOutAndErr:
+                    symbol = ">>>";
+                    break;
+
+                case RedirectionMode.StdIn:
+                    symbol = "<";
+                    break;
+
+                default:
+                    throw new NotImplementedException();
+            }
+
+            return $"{this.Left} {symbol} {this.Redirection}";
+        }
+
+        public IShellSegment Parent { get; set; }
+
+        public T Accept<T>( ISegmentVisitor<T> visitor )
+            => visitor.Visit( this );
+
+        public void Accept( ISegmentVisitor visitor )
+            => visitor.Visit( this );
+
         public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
         {
             capture = this.Mode == RedirectionMode.StdOut
@@ -58,8 +88,8 @@ namespace Lumi.Shell.Segments
                    || this.Mode == RedirectionMode.StdOutAndErr;
 
             inputs = this.Mode == RedirectionMode.StdIn
-                   ? new List<string>( File.ReadAllLines( this.Redirection, Encoding.UTF8 ) )
-                   : null;
+                         ? new List<string>( File.ReadAllLines( this.Redirection, Encoding.UTF8 ) )
+                         : null;
 
             var result = this.Left.Execute( inputs, capture );
 
@@ -89,35 +119,6 @@ namespace Lumi.Shell.Segments
             }
 
             return result;
-        }
-
-        public override string ToString()
-        {
-            string symbol;
-
-            switch( this.Mode )
-            {
-                case RedirectionMode.StdOut:
-                    symbol = ">";
-                    break;
-
-                case RedirectionMode.StdErr:
-                    symbol = ">>";
-                    break;
-
-                case RedirectionMode.StdOutAndErr:
-                    symbol = ">>>";
-                    break;
-
-                case RedirectionMode.StdIn:
-                    symbol = "<";
-                    break;
-
-                default:
-                    throw new NotImplementedException();
-            }
-
-            return $"{this.Left.ToString()} {symbol} {this.Redirection}";
         }
     }
 }

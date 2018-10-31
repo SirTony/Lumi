@@ -7,8 +7,8 @@ namespace Lumi
     // License: https://raw.githubusercontent.com/Rohansi/Mond/master/LICENSE
     internal sealed class IndentTextWriter : TextWriter
     {
-        private readonly TextWriter _writer;
         private readonly string _indentStr;
+        private readonly TextWriter _writer;
         private bool _shouldIndent;
 
         public override Encoding Encoding => this._writer.Encoding;

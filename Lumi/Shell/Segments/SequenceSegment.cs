@@ -1,23 +1,17 @@
-﻿using Lumi.Shell.Visitors;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Lumi.Shell.Visitors;
 
 namespace Lumi.Shell.Segments
 {
     internal sealed class SequenceSegment : IShellSegment
     {
         /// <summary>
-        /// If <see langword="true" />, stop segment execution on a non-zero exit code.
+        ///     If <see langword="true" />, stop segment execution on a non-zero exit code.
         /// </summary>
         public bool Safe { get; }
+
         public IShellSegment Left { get; }
         public IShellSegment Right { get; }
-        public IShellSegment Parent { get; set; }
-
-        public T Accept<T>( ISegmentVisitor<T> visitor )
-            => visitor.Visit( this );
-
-        public void Accept( ISegmentVisitor visitor )
-            => visitor.Visit( this );
 
         public SequenceSegment( IShellSegment parent, IShellSegment left, IShellSegment right, bool safe = true )
         {
@@ -27,6 +21,17 @@ namespace Lumi.Shell.Segments
             this.Right = right;
         }
 
+        public override string ToString()
+            => $"{this.Left}{( this.Safe ? " & " : "; " )}{this.Right}";
+
+        public IShellSegment Parent { get; set; }
+
+        public T Accept<T>( ISegmentVisitor<T> visitor )
+            => visitor.Visit( this );
+
+        public void Accept( ISegmentVisitor visitor )
+            => visitor.Visit( this );
+
         public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
         {
             var result = this.Left.Execute();
@@ -35,8 +40,5 @@ namespace Lumi.Shell.Segments
 
             return this.Right.Execute();
         }
-
-        public override string ToString()
-            => $"{this.Left.ToString()}{( this.Safe ? " & " : "; " )}{this.Right.ToString()}";
     }
 }
