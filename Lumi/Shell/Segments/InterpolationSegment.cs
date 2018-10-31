@@ -1,10 +1,13 @@
 ﻿using System.Collections.Generic;
 using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
+    [JsonObject( MemberSerialization.OptIn )]
     internal sealed class InterpolationSegment : IShellSegment
     {
+        [JsonProperty]
         public IShellSegment Segment { get; }
 
         public InterpolationSegment( IShellSegment parent, IShellSegment segment )
@@ -14,6 +17,7 @@ namespace Lumi.Shell.Segments
         }
 
         public override string ToString() => $"#({this.Segment})";
+
         public IShellSegment Parent { get; set; }
 
         public T Accept<T>( ISegmentVisitor<T> visitor )

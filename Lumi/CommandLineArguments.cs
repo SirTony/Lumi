@@ -13,6 +13,8 @@ namespace Lumi
     // ReSharper disable once ClassNeverInstantiated.Global
     internal sealed class CommandLineArguments
     {
+        public enum ParseTreeFormat { None, Default, Json }
+
         [CustomHelpHook]
         [ArgShortcut( "?" )]
         [ArgDescription( "Show this help screen." )]
@@ -28,10 +30,10 @@ namespace Lumi
         [ArgDescription( "Print all tokens for a given command." )]
         public bool PrintTokens { get; private set; }
 
-        [ArgDefaultValue( false )]
+        [ArgDefaultValue( ParseTreeFormat.None )]
         [ArgShortcut( ArgShortcutPolicy.NoShortcut )]
         [ArgDescription( "Print the parse tree for a given command." )]
-        public bool PrintTree { get; private set; }
+        public ParseTreeFormat PrintTree { get; private set; }
 
         [ArgDefaultValue( false )]
         [ArgShortcut( "n" )]

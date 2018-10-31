@@ -1,11 +1,16 @@
 ﻿using System.Collections.Generic;
 using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
+    [JsonObject( MemberSerialization.OptIn )]
     internal sealed class PipeSegment : IShellSegment
     {
+        [JsonProperty]
         public IShellSegment Left { get; }
+
+        [JsonProperty]
         public IShellSegment Right { get; }
 
         public PipeSegment( IShellSegment parent, IShellSegment left, IShellSegment right )

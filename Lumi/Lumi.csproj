@@ -51,10 +51,13 @@
   <ItemGroup>
     <Compile Include="ColorScheme.cs" />
     <Compile Include="CommandLineArguments.cs" />
-    <Compile Include="Commands\ChangeDirectoryCommand.cs" />
-    <Compile Include="Commands\ExitCommand.cs" />
+    <Compile Include="Commands\AliasAttribute.cs" />
+    <Compile Include="Commands\ChangeDirectory.cs" />
+    <Compile Include="Commands\ClearScreen.cs" />
+    <Compile Include="Commands\Exit.cs" />
     <Compile Include="Commands\ICommand.cs" />
     <Compile Include="Commands\PrintWorkingDirectory.cs" />
+    <Compile Include="Commands\Split.cs" />
     <Compile Include="ConfigManager.cs" />
     <Compile Include="ConsoleEx.cs" />
     <Compile Include="CustomHelpHook.cs" />
@@ -62,7 +65,6 @@
     <Compile Include="Shell\Segments\VariableValueChangedEventArgs.cs" />
     <Compile Include="Util\IEnumerableExtensions.cs" />
     <Compile Include="IndentTextWriter.cs" />
-    <Compile Include="Kernel32.cs" />
     <Compile Include="Util\KeyValuePairExtensions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ProgramNotFoundException.cs" />

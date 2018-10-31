@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Lumi.Config;
-using Lumi.Shell.Segments;
 
 namespace Lumi.Shell
 {
@@ -22,16 +21,65 @@ namespace Lumi.Shell
         public static IEnumerable<string> Escape( IEnumerable<string> parts )
             => parts.Select( ShellUtil.Escape );
 
-        public static IReadOnlyList<string> GetLines( string result )
-            => result.Split( new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries ).Select( x => x.Trim() ).ToArray();
+        //public static string GetCaseCorrectDirectoryPath( string path )
+        //{
+        //    var fullPath = Path.GetFullPath( path );
+        //    if( !Directory.Exists( fullPath ) ) return fullPath;
 
-        public static string GetFriendlyName( this IShellSegment segment )
-            => segment.GetType().Name.ToLowerInvariant().Replace( "segment", "" );
+        //    return Directory.EnumerateFiles()
+        //}
+
+        public static string GetProperDirectoryCapitalization( string dir )
+        {
+            try
+            {
+                if( !Directory.Exists( dir ) )
+                    return dir;
+
+                var dirInfo = new DirectoryInfo( dir );
+                var parentDirInfo = dirInfo.Parent;
+
+                return parentDirInfo is null
+                           ? dirInfo.Name
+                           : Path.Combine(
+                               ShellUtil.GetProperDirectoryCapitalization( parentDirInfo.FullName ),
+                               parentDirInfo.GetDirectories( dirInfo.Name )[0].Name
+                           );
+            }
+            catch
+            {
+                return dir;
+            }
+        }
+
+        public static string GetProperFilePathCapitalization( string fileName )
+        {
+            try
+            {
+                if( !File.Exists( fileName ) )
+                    return fileName;
+
+                var fileInfo = new FileInfo( fileName );
+                var dirInfo = fileInfo.Directory;
+
+                return dirInfo is null
+                           ? fileInfo.FullName
+                           : Path.Combine(
+                               ShellUtil.GetProperDirectoryCapitalization( dirInfo.FullName ),
+                               dirInfo.GetFiles( fileInfo.Name )[0].Name
+                           );
+            }
+            catch
+            {
+                return fileName;
+            }
+        }
 
         public static string ProcessTilde( string path )
         {
             if( !path.StartsWith( "~" ) || !ConfigManager.Instance.UseTilde )
-                return path;
+                return ShellUtil.GetProperDirectoryCapitalization( path );
+
             var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );
             var withoutTilde = path.Substring( 1 )
                                    .Replace( Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar )
@@ -42,7 +90,7 @@ namespace Lumi.Shell
                                     );
 
             var newPath = Path.Combine( withoutTilde.Prepend( home ).ToArray() );
-            return Kernel32.GetWindowsPhysicalPath( newPath );
+            return ShellUtil.GetProperDirectoryCapitalization( newPath );
         }
     }
 }

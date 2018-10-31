@@ -5,23 +5,25 @@ using System.Diagnostics;
 using System.Linq;
 using Lumi.Commands;
 using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
+    [JsonObject( MemberSerialization.OptIn )]
     internal sealed class CommandSegment : IShellSegment
     {
+        [JsonProperty]
         public string Command { get; }
+
+        [JsonProperty]
         public IReadOnlyList<IShellSegment> Arguments { get; }
 
         public CommandSegment( IShellSegment parent, string command, params IShellSegment[] args )
         {
             this.Parent = parent;
             this.Command = command;
-            this.Arguments = args ?? new IShellSegment[0];
+            this.Arguments = args ?? Array.Empty<IShellSegment>();
         }
-
-        private void Proc_OutputDataReceived( object sender, DataReceivedEventArgs e )
-            => throw new NotImplementedException();
 
         public override string ToString()
             => this.Arguments.Count == 0
@@ -38,7 +40,7 @@ namespace Lumi.Shell.Segments
 
         public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
         {
-            if( BuiltInCommands.TryExecute( this.Command, this.Arguments, out var result ) )
+            if( BuiltInCommands.TryExecute( this.Command, this.Arguments, inputs, out var result ) )
                 return result;
 
             var args = new List<string>();

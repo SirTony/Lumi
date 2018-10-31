@@ -13,12 +13,11 @@ namespace Lumi.Shell.Visitors
             => this._writer = new IndentTextWriter( writer, new string( ' ', indentSize ) );
 
         private void WriteParent( IShellSegment segment )
-        {
-            if( segment.Parent == null )
-                this._writer.WriteLine( "Parent = <none>" );
-            else
-                this._writer.WriteLine( $"Parent = {segment.Parent.GetType().Name}" );
-        }
+            => this._writer.WriteLine(
+                segment.Parent == null
+                    ? "Parent = <none>"
+                    : $"Parent = {segment.Parent.GetType().Name.Replace( "Segment", "" )}"
+            );
 
         public void Visit( CommandSegment segment )
         {

@@ -1,4 +1,5 @@
-﻿using Lumi.Shell;
+﻿using System.Collections.Generic;
+using Lumi.Shell;
 
 namespace Lumi.Commands
 {
@@ -6,6 +7,6 @@ namespace Lumi.Commands
     {
         string Name { get; }
 
-        ShellResult Execute();
+        ShellResult Execute( IReadOnlyList<string> input );
     }
 }

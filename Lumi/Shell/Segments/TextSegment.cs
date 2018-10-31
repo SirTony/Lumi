@@ -1,10 +1,13 @@
 ﻿using System.Collections.Generic;
 using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
+    [JsonObject( MemberSerialization.OptIn )]
     internal sealed class TextSegment : IShellSegment
     {
+        [JsonProperty]
         public string Text { get; }
 
         public TextSegment( IShellSegment parent, string text )
@@ -14,6 +17,7 @@ namespace Lumi.Shell.Segments
         }
 
         public override string ToString() => ShellUtil.Escape( this.Text );
+
         public IShellSegment Parent { get; set; }
 
         public T Accept<T>( ISegmentVisitor<T> visitor )

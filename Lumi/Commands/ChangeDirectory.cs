@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Lumi.Shell;
@@ -11,7 +12,7 @@ namespace Lumi.Commands
         "UnusedAutoPropertyAccessor.Local",
         Justification = "Private setters are needed by PowerArgs"
     )]
-    internal sealed class ChangeDirectoryCommand : ICommand
+    internal sealed class ChangeDirectory : ICommand
     {
         [CustomHelpHook( "cd" )]
         [ArgShortcut( "?" )]
@@ -20,14 +21,14 @@ namespace Lumi.Commands
 
         [ArgPosition( 0 )]
         [ArgDefaultValue( "" )]
-        public string Path { get; set; }
+        private string Path { get; set; }
 
         [ArgIgnore]
         public string Name { get; } = "cd";
 
-        public ShellResult Execute()
+        public ShellResult Execute( IReadOnlyList<string> input )
         {
-            if( this.Path == null )
+            if( String.IsNullOrWhiteSpace( this.Path ) )
                 this.Path = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );
 
             var fullPath = System.IO.Path.GetFullPath( ShellUtil.ProcessTilde( this.Path ) );

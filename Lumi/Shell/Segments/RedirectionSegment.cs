@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
+    [JsonObject( MemberSerialization.OptIn )]
     internal sealed class RedirectionSegment : IShellSegment
     {
         public enum RedirectionMode
@@ -32,9 +34,19 @@ namespace Lumi.Shell.Segments
             StdOutAndErr
         }
 
+        private static readonly IDictionary<string, Stream> NamedStreams;
+
+        [JsonProperty]
         public RedirectionMode Mode { get; }
+
+        [JsonProperty]
         public IShellSegment Left { get; }
+
+        [JsonProperty]
         public string Redirection { get; }
+
+        static RedirectionSegment()
+            => RedirectionSegment.NamedStreams = new Dictionary<string, Stream>( StringComparer.OrdinalIgnoreCase );
 
         public RedirectionSegment( IShellSegment parent, IShellSegment left, string redirection, RedirectionMode mode )
         {
@@ -73,6 +85,28 @@ namespace Lumi.Shell.Segments
             return $"{this.Left} {symbol} {this.Redirection}";
         }
 
+        private ( Stream, bool ) OpenRedirectionStream()
+        {
+            if( this.Redirection[0] != ':' )
+            {
+                return this.Mode == RedirectionMode.StdIn && !File.Exists( this.Redirection )
+                           ? ( null, false )
+                           : (
+                                 File.Open( this.Redirection, FileMode.Create, FileAccess.Write, FileShare.None ),
+                                 false
+                             );
+            }
+
+            var rest = this.Redirection.Substring( 1 );
+            if( rest.Equals( "null", StringComparison.OrdinalIgnoreCase ) )
+                return ( Stream.Null, true );
+
+            if( RedirectionSegment.NamedStreams.TryGetValue( rest, out var stream ) )
+                return ( stream, true );
+
+            return ( RedirectionSegment.NamedStreams[rest] = new MemoryStream(), true );
+        }
+
         public IShellSegment Parent { get; set; }
 
         public T Accept<T>( ISegmentVisitor<T> visitor )
@@ -83,21 +117,43 @@ namespace Lumi.Shell.Segments
 
         public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
         {
+            const int BufferSize = 1024 * 4; // 4k
+
             capture = this.Mode == RedirectionMode.StdOut
                    || this.Mode == RedirectionMode.StdErr
                    || this.Mode == RedirectionMode.StdOutAndErr;
 
-            inputs = this.Mode == RedirectionMode.StdIn
-                         ? new List<string>( File.ReadAllLines( this.Redirection, Encoding.UTF8 ) )
-                         : null;
+            Stream stream;
+            bool leaveOpen;
+
+            if( this.Mode == RedirectionMode.StdIn )
+            {
+                ( stream, leaveOpen ) = this.OpenRedirectionStream();
+                if( stream is null )
+                    return ShellResult.Error( -1, $"standard input redirection cannot read from '{this.Redirection}'" );
+
+                var lines = new List<string>();
+                using( var reader = new StreamReader( stream, Encoding.UTF8, true, BufferSize, leaveOpen ) )
+                {
+                    string line;
+                    while( ( line = reader.ReadLine() ) != null )
+                        lines.Add( line );
+                }
+
+                inputs = lines;
+
+                // clear the stream after we read from it to prevent pollution and memory leaks
+                if( leaveOpen && stream is MemoryStream memory )
+                    memory.SetLength( 0 );
+            }
 
             var result = this.Left.Execute( inputs, capture );
 
             if( !capture )
                 return result;
 
-            using( var stream = File.Open( this.Redirection, FileMode.Create, FileAccess.Write, FileShare.None ) )
-            using( var writer = new StreamWriter( stream, Encoding.UTF8 ) )
+            ( stream, leaveOpen ) = this.OpenRedirectionStream();
+            using( var writer = new StreamWriter( stream, Encoding.UTF8, BufferSize, leaveOpen ) )
             {
                 switch( this.Mode )
                 {
@@ -116,9 +172,13 @@ namespace Lumi.Shell.Segments
                 }
 
                 writer.Flush();
+
+                // seek back to the beginning of the stream after we write to allow reading
+                if( leaveOpen && stream is MemoryStream )
+                    stream.Position = 0;
             }
 
-            return result;
+            return new ShellResult( result.ExitCode, null, result.StandardError );
         }
     }
 }

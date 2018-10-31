@@ -1,16 +1,22 @@
 ﻿using System.Collections.Generic;
 using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
+    [JsonObject( MemberSerialization.OptIn )]
     internal sealed class SequenceSegment : IShellSegment
     {
         /// <summary>
         ///     If <see langword="true" />, stop segment execution on a non-zero exit code.
         /// </summary>
+        [JsonProperty]
         public bool Safe { get; }
 
+        [JsonProperty]
         public IShellSegment Left { get; }
+
+        [JsonProperty]
         public IShellSegment Right { get; }
 
         public SequenceSegment( IShellSegment parent, IShellSegment left, IShellSegment right, bool safe = true )

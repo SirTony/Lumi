@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 
 namespace Lumi.Shell.Segments
 {
+    [JsonObject( MemberSerialization.OptIn )]
     internal sealed class VariableSegment : IShellSegment
     {
         public static class Scopes
@@ -25,6 +26,7 @@ namespace Lumi.Shell.Segments
 
         private readonly string _scope;
 
+        [JsonProperty]
         public string Scope
         {
             get
@@ -67,6 +69,7 @@ namespace Lumi.Shell.Segments
             }
         }
 
+        [JsonProperty]
         public string Name { get; }
 
         static VariableSegment()

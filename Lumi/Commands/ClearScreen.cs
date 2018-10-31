@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Lumi.Shell;
 using PowerArgs;
@@ -10,17 +11,21 @@ namespace Lumi.Commands
         "UnusedAutoPropertyAccessor.Local",
         Justification = "Private setters are needed by PowerArgs"
     )]
-    internal sealed class PrintWorkingDirectory : ICommand
+    [Alias( "cls" )]
+    internal sealed class ClearScreen : ICommand
     {
-        [CustomHelpHook( "cd" )]
+        [CustomHelpHook( "clear" )]
         [ArgShortcut( "?" )]
         [ArgDescription( "Show this help screen." )]
         public bool Help { get; private set; }
 
         [ArgIgnore]
-        public string Name { get; } = "pwd";
+        public string Name { get; } = "clear";
 
         public ShellResult Execute( IReadOnlyList<string> input )
-            => ShellResult.Ok( Program.GetCurrentDirectory() );
+        {
+            Console.Clear();
+            return ShellResult.Ok();
+        }
     }
 }

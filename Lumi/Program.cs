@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -8,6 +7,7 @@ using Lumi.Config;
 using Lumi.Shell;
 using Lumi.Shell.Segments;
 using Lumi.Shell.Visitors;
+using Newtonsoft.Json;
 using Args = PowerArgs.Args;
 using Console = Colorful.Console;
 
@@ -31,10 +31,6 @@ namespace Lumi
         public static string ExecutablePath { get; }
         public static string SourceDirectory { get; }
 
-        private static readonly VariableSegment NoExecute;
-        private static readonly VariableSegment PrintTokens;
-        private static readonly VariableSegment PrintTree;
-
         static Program()
         {
             Program.Assembly = typeof( Program ).Assembly;
@@ -42,10 +38,6 @@ namespace Lumi
 
             Program.ExecutablePath = uri.LocalPath;
             Program.SourceDirectory = Path.GetDirectoryName( uri.LocalPath );
-
-            Program.NoExecute = new VariableSegment( null, "temp", "__NO_EXECUTE" );
-            Program.PrintTokens = new VariableSegment( null, "temp", "__PRINT_TOKENS" );
-            Program.PrintTree = new VariableSegment( null, "temp", "__PRINT_TREE" );
         }
 
         private static void Main( string[] args )
@@ -57,67 +49,6 @@ namespace Lumi
             Console.Title = Program.DefaultTitle;
             ConfigManager.Instance.ColorScheme.Apply();
             Console.Clear();
-
-            // These need to be set ahead of time because they're temporary
-            // so they only live as long as the process, and if we try
-            // reading the value before it's been set the variable
-            // doesn't actually exist and we'll get an exception.
-            Program.NoExecute.SetValue( "false" );
-            Program.PrintTokens.SetValue( "false" );
-            Program.PrintTree.SetValue( "false" );
-
-            Program.NoExecute.WatchForChange(
-                delegate( object sender, VariableValueChangedEventArgs e ) {
-                    if( !( sender is VariableSegment variable )
-                     || variable.Scope != VariableSegment.Scopes.Temporary
-                     || !variable.Is<bool>() )
-                        return;
-
-                    ConsoleEx.WriteWarning(
-                        "Disabling command execution will prevent usage of the set command "
-                      + "preventing execution from being re-enabled FOR THIS PROCESS ONLY."
-                      + "Other Lumi shells will be unaffected."
-                    );
-
-                    Console.WriteLine();
-                    e.Revert = Prompt.YesNo( "Would you like to revert?", true );
-                }
-            );
-
-            VariableSegment.WatchForChange(
-                "ColorScheme.Background",
-                delegate( object sender, VariableValueChangedEventArgs e ) {
-                    if( !( sender is VariableSegment variable )
-                     || variable.Scope != VariableSegment.Scopes.Configuration
-                     || !variable.Is<Color>() )
-                        return;
-
-                    ConsoleEx.WriteWarning(
-                        "Changing the console window's background color will cause all text to be cleared."
-                    );
-
-                    Console.WriteLine();
-                    e.Revert = Prompt.YesNo( "Would you like to revert?", true );
-
-                    if( e.Revert ) return;
-
-                    ConfigManager.Instance.ColorScheme.Apply();
-                    Console.Clear();
-                }
-            );
-
-            VariableSegment.WatchForChange(
-                "ColorScheme.Foreground",
-                delegate( object sender, VariableValueChangedEventArgs e ) {
-                    if( !( sender is VariableSegment variable )
-                     || variable.Scope != VariableSegment.Scopes.Configuration
-                     || !variable.Is<Color>()
-                     || e.Revert )
-                        return;
-
-                    ConfigManager.Instance.ColorScheme.Apply();
-                }
-            );
 
             var parsed = Args.Parse<CommandLineArguments>( args );
             if( parsed == null )
@@ -154,16 +85,29 @@ namespace Lumi
                 var parser = new ShellParser( lexer.Tokenize() );
                 var segment = parser.ParseAll();
 
-                if( args.PrintTokens || Program.PrintTokens.As<bool>() )
+                if( args.PrintTokens )
                     lexer.Tokenize().ForEach( x => Console.WriteLine( x.ToString( true ) ) );
 
-                if( args.PrintTree || Program.PrintTree.As<bool>() )
+                switch( args.PrintTree )
                 {
-                    var printer = new DebugPrintVisitor( Console.Out );
-                    segment.Accept( printer );
+                    case CommandLineArguments.ParseTreeFormat.None:
+                        break;
+
+                    case CommandLineArguments.ParseTreeFormat.Default:
+                        var printer = new DebugPrintVisitor( Console.Out );
+                        segment.Accept( printer );
+                        break;
+
+                    case CommandLineArguments.ParseTreeFormat.Json:
+                        var json = JsonConvert.SerializeObject( segment, Formatting.Indented );
+                        Console.WriteLine( json );
+                        break;
+
+                    default:
+                        throw new NotImplementedException();
                 }
 
-                if( args.NoExecute || Program.NoExecute.As<bool>() )
+                if( args.NoExecute )
                     return;
 
                 // The built-in "set" command has to be processed up-front because it depends on
@@ -237,7 +181,7 @@ namespace Lumi
         public static string GetCurrentDirectory()
         {
             var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ).ToLowerInvariant();
-            var current = Directory.GetCurrentDirectory();
+            var current = ShellUtil.GetProperDirectoryCapitalization( Directory.GetCurrentDirectory() );
 
             return current.ToLowerInvariant().StartsWith( home ) && ConfigManager.Instance.UseTilde
                        ? $"~{current.Substring( home.Length )}"

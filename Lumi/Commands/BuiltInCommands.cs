@@ -23,7 +23,7 @@ namespace Lumi.Commands
 
         static BuiltInCommands()
         {
-            BuiltInCommands.Commands = new Dictionary<string, Type>();
+            BuiltInCommands.Commands = new Dictionary<string, Type>( StringComparer.OrdinalIgnoreCase );
 
             var commandType = typeof( ICommand );
             var types = from x in commandType.Assembly.GetTypes()
@@ -35,16 +35,24 @@ namespace Lumi.Commands
                             null
                         )
                         where ctor != null
-                        select ( ( (ICommand) Activator.CreateInstance( x, false ) ).Name, Type: x );
+                        let aliases = x.GetCustomAttributes<AliasAttribute>()?.Select( y => y.Alias )
+                        select (
+                                   ( (ICommand) ctor.Invoke( null ) ).Name,
+                                   Type: x,
+                                   Aliases: aliases ?? Array.Empty<string>()
+                               );
 
-            BuiltInCommands.Commands = types.ToDictionary(
-                pair => pair.Name,
-                pair => pair.Type,
-                StringComparer.OrdinalIgnoreCase
-            );
+            foreach( var ( name, type, aliases) in types )
+            {
+                var names = aliases.Prepend( name ).Distinct( StringComparer.OrdinalIgnoreCase );
+                foreach( var x in names )
+                    BuiltInCommands.Commands[x] = type;
+            }
         }
 
-        public static bool TryExecute( string name, IReadOnlyList<IShellSegment> args, out ShellResult result )
+        public static bool TryExecute(
+            string name, IReadOnlyList<IShellSegment> args, IReadOnlyList<string> input, out ShellResult result
+        )
         {
             if( !BuiltInCommands.Commands.TryGetValue( name, out var type ) )
             {
@@ -71,7 +79,7 @@ namespace Lumi.Commands
                 return true;
             }
 
-            result = command.Execute();
+            result = command.Execute( input );
             return true;
         }
 
