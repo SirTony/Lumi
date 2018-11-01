@@ -21,8 +21,6 @@ namespace Lumi.Shell.Segments
             public const string Process = "process";
         }
 
-        private static readonly IDictionary<string, IList<EventHandler<VariableValueChangedEventArgs>>> Watchers;
-
         [JsonProperty( nameof( VariableSegment.Scope ) )]
         private readonly string _scope;
 
@@ -71,12 +69,6 @@ namespace Lumi.Shell.Segments
         [JsonProperty]
         public string Name { get; }
 
-        static VariableSegment()
-            => VariableSegment.Watchers =
-                   new Dictionary<string, IList<EventHandler<VariableValueChangedEventArgs>>>(
-                       StringComparer.OrdinalIgnoreCase
-                   );
-
         public VariableSegment( IShellSegment parent, string name )
             : this( parent, null, name )
         {
@@ -120,94 +112,59 @@ namespace Lumi.Shell.Segments
 
         private ShellResult SetValueImpl( string value, bool suppressEvent )
         {
-            ShellResult result;
-            var oldValue = this.Execute().StandardOutput.Join( Environment.NewLine );
-
             switch( this.Scope )
             {
                 case Scopes.Configuration:
                 {
-                    var (instance, prop) =
-                        Program.AppConfig.GetPropertyFromPath( this.Name, VariableSegment.IsJsonProperty );
+                    var (instance, prop) = Program.Config.GetPropertyFromPath(
+                        this.Name,
+                        VariableSegment.IsJsonProperty
+                    );
+
                     var setter = prop?.GetSetMethod( true );
 
                     if( instance == null || prop == null || setter == null )
-                    {
-                        result = this.Error();
-                        break;
-                    }
+                        return this.Error();
 
                     var (ok, converted) = ValueConverter.Default.TryConvert( value, prop.PropertyType );
 
                     if( !ok )
-                    {
-                        result = ShellResult.Error( -3, $"set: cannot convert value to type {prop.PropertyType.Name}" );
-                        break;
-                    }
+                        return ShellResult.Error( -3, $"set: cannot convert value to type {prop.PropertyType.Name}" );
 
                     try
                     {
                         setter.Invoke( instance, new[] { converted } );
-                        Program.AppConfig.Save();
-                        result = ShellResult.Ok( converted.ToString() );
+                        Program.Config.Save();
+                        return ShellResult.Ok( converted.ToString() );
                     }
                     catch( Exception ex )
                     {
                         var msgs = new[] { "set: could not set value. reason:", ex.Message };
-
-                        result = ShellResult.Error( -4, msgs );
+                        return ShellResult.Error( -4, msgs );
                     }
-
-                    break;
                 }
 
                 case Scopes.System:
-                    result = SetVariable( EnvironmentVariableTarget.Machine );
-                    break;
+                    return SetVariable( EnvironmentVariableTarget.Machine );
 
                 case Scopes.User:
-                    result = SetVariable( EnvironmentVariableTarget.User );
-                    break;
+                    return SetVariable( EnvironmentVariableTarget.User );
 
                 case Scopes.Persistent:
-                    Program.AppConfig.Persistent[this.Name] = value;
-                    Program.AppConfig.Save();
-                    result = ShellResult.Ok( value );
-                    break;
+                    Program.Config.Persistent[this.Name] = value;
+                    Program.Config.Save();
+                    return ShellResult.Ok( value );
 
                 case Scopes.Temporary:
-                    Program.AppConfig.Temporary[this.Name] = value;
-                    result = ShellResult.Ok( value );
-                    break;
+                    Program.Config.Temporary[this.Name] = value;
+                    return ShellResult.Ok( value );
 
                 case Scopes.Process:
-                    result = SetVariable( EnvironmentVariableTarget.Process );
-                    break;
+                    return SetVariable( EnvironmentVariableTarget.Process );
 
-                case Scopes.Invalid:
                 default:
                     return ShellResult.Error( -2, $"{this}: invalid variable scope: {this._scope}" );
             }
-
-            if( suppressEvent || !VariableSegment.Watchers.TryGetValue( this.Name, out var handlers ) ) return result;
-
-            // make sure we don't needlessly reset the variable
-            // if multiple handlers trigger a revert.
-            var hasReverted = false;
-
-            foreach( var handler in handlers )
-            {
-                var args = new VariableValueChangedEventArgs( value, oldValue );
-                handler( this, args );
-
-                if( !args.Revert || hasReverted ) continue;
-
-                this.SetValueImpl( oldValue, true );
-                result = ShellResult.Ok( oldValue );
-                hasReverted = true;
-            }
-
-            return result;
 
             ShellResult SetVariable( EnvironmentVariableTarget target )
             {
@@ -216,21 +173,7 @@ namespace Lumi.Shell.Segments
             }
         }
 
-        public void WatchForChange( EventHandler<VariableValueChangedEventArgs> handler )
-            => VariableSegment.WatchForChange( this.Name, handler );
-
         private ShellResult Error() => ShellResult.Error( -1, $"no such variable '{this.Name}'" );
-
-        public static void WatchForChange( string name, EventHandler<VariableValueChangedEventArgs> handler )
-        {
-            if( VariableSegment.Watchers.TryGetValue( name, out var list ) )
-            {
-                list.Add( handler );
-                return;
-            }
-
-            VariableSegment.Watchers[name] = new List<EventHandler<VariableValueChangedEventArgs>> { handler };
-        }
 
 #pragma warning disable IDE0046 // Convert to conditional expression
         private static bool IsJsonProperty( PropertyInfo info )
@@ -246,7 +189,7 @@ namespace Lumi.Shell.Segments
 #pragma warning restore IDE0046 // Convert to conditional expression
 
         public override string ToString()
-            => this._scope == null ? $"${this.Name}" : $"$[{this._scope}]{this.Name}";
+            => this._scope == null ? $"${this.Name}" : $"${this._scope}:{this.Name}";
 
         private ShellResult GetValue()
         {
@@ -254,7 +197,7 @@ namespace Lumi.Shell.Segments
             {
                 case Scopes.Configuration:
                 {
-                    var value = Program.AppConfig.GetValueFromPropertyPath(
+                    var value = Program.Config.GetValueFromPropertyPath(
                         this.Name,
                         VariableSegment.IsJsonProperty
                     );
@@ -271,14 +214,14 @@ namespace Lumi.Shell.Segments
 
                 case Scopes.Persistent:
                 {
-                    return Program.AppConfig.Persistent.TryGetValue( this.Name, out var result )
+                    return Program.Config.Persistent.TryGetValue( this.Name, out var result )
                                ? ShellResult.Ok( result )
                                : this.Error();
                 }
 
                 case Scopes.Temporary:
                 {
-                    return Program.AppConfig.Temporary.TryGetValue( this.Name, out var result )
+                    return Program.Config.Temporary.TryGetValue( this.Name, out var result )
                                ? ShellResult.Ok( result )
                                : this.Error();
                 }
@@ -306,6 +249,12 @@ namespace Lumi.Shell.Segments
             => visitor.Visit( this );
 
         public ShellResult Execute( IReadOnlyList<string> inputs = null, bool capture = false )
-            => inputs?.Count >= 1 ? this.SetValue( inputs.Join( Environment.NewLine ) ) : this.GetValue();
+            => inputs?.Count >= 1
+                   ? this.SetValue(
+                       inputs.Reject( String.IsNullOrWhiteSpace )
+                             .Select( x => x.Trim() )
+                             .Join( Environment.NewLine )
+                   )
+                   : this.GetValue();
     }
 }

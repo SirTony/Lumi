@@ -21,7 +21,7 @@ namespace Lumi.Commands
 
         [ArgPosition( 0 )]
         [ArgDefaultValue( 0 )]
-        private int ExitCode { get; set; }
+        public int ExitCode { get; private set; }
 
         [ArgIgnore]
         public string Name { get; } = "exit";

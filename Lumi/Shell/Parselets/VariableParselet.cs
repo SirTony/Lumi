@@ -9,7 +9,7 @@ namespace Lumi.Shell.Parselets
         {
             var literal = parser.Take( ShellTokenKind.Literal, token ).Text;
             if( !literal.Contains( ":" ) )
-                return new VariableSegment( parent, Program.AppConfig.DefaultVariableScope, literal );
+                return new VariableSegment( parent, Program.Config.DefaultVariableScope, literal );
 
             var colon = literal.IndexOf( ":", StringComparison.Ordinal );
             var scope = literal.Substring( 0, colon );

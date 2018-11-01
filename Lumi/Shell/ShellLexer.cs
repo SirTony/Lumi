@@ -27,7 +27,8 @@ namespace Lumi.Shell
             ['<'] = ShellTokenKind.LeftAngle,
             ['>'] = ShellTokenKind.RightAngle,
             ['('] = ShellTokenKind.LeftParen,
-            [')'] = ShellTokenKind.RightParen,
+            [')'] = ShellTokenKind.RightParen
+
             //['['] = ShellTokenKind.LeftSquare,
             //[']'] = ShellTokenKind.RightSquare
         };

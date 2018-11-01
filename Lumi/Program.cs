@@ -24,7 +24,7 @@ namespace Lumi
         public const bool IsDebug = false;
 #endif
 
-        public static AppConfig AppConfig { get; }
+        public static AppConfig Config { get; private set; }
         public static Assembly Assembly { get; }
         public static string ExecutablePath { get; }
         public static string SourceDirectory { get; }
@@ -38,7 +38,7 @@ namespace Lumi
             Program.SourceDirectory = Path.GetDirectoryName( uri.LocalPath );
 
             // Must be assigned after SourceDirectory because AppConfig's static ctor depends on it.
-            Program.AppConfig = AppConfig.Load();
+            Program.Config = AppConfig.Load();
         }
 
         private static void Main( string[] args )
@@ -48,7 +48,7 @@ namespace Lumi
             };
 
             Console.Title = Program.DefaultTitle;
-            Program.AppConfig.ColorScheme.Apply();
+            Program.Config.ColorScheme.Apply();
             Console.Clear();
 
             var parsed = Args.Parse<CommandLineArguments>( args );
@@ -141,8 +141,8 @@ namespace Lumi
                 var line = new string( '─', len );
 
                 Console.WriteLine( section );
-                Console.WriteLine( $"{whitespace}^", Program.AppConfig.ColorScheme.ErrorColor );
-                Console.WriteLine( $"{line}┘", Program.AppConfig.ColorScheme.ErrorColor );
+                Console.WriteLine( $"{whitespace}^", Program.Config.ColorScheme.ErrorColor );
+                Console.WriteLine( $"{line}┘", Program.Config.ColorScheme.ErrorColor );
             }
             catch( ProgramNotFoundException ex ) when( !Program.IsDebug )
             {
@@ -161,7 +161,7 @@ namespace Lumi
 
         private static void WritePrompt()
         {
-            var scheme = Program.AppConfig.ColorScheme;
+            var scheme = Program.Config.ColorScheme;
 
             Console.Write( "$ " );
             Console.Write( Environment.UserName, scheme.PromptUserNameColor );
@@ -170,12 +170,19 @@ namespace Lumi
             Console.Write( "> " );
         }
 
+        public static void ReloadConfig()
+        {
+            Program.Config = AppConfig.Load();
+            Program.Config.ColorScheme.Apply();
+            Console.Clear();
+        }
+
         public static string GetCurrentDirectory()
         {
             var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ).ToLowerInvariant();
             var current = ShellUtil.GetProperDirectoryCapitalization( Directory.GetCurrentDirectory() );
 
-            return current.ToLowerInvariant().StartsWith( home ) && Program.AppConfig.UseTilde
+            return current.ToLowerInvariant().StartsWith( home ) && Program.Config.UseTilde
                        ? $"~{current.Substring( home.Length )}"
                        : current;
         }

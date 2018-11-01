@@ -8,15 +8,6 @@ using PowerArgs;
 
 namespace Lumi.Commands
 {
-    /*
-        TODO
-        ====
-        This entire class is a janky rushjob that I threw together to get 'cd' working
-        for testing purposes. The intention is to redo this class into a proper
-        module/plugin system with automatic argument matching and type conversion
-        to make defining new built-ins as simple as declaring a new method without
-        having to faff with a collection of segments.
-    */
     internal static class BuiltInCommands
     {
         private static readonly IDictionary<string, Type> Commands;
@@ -81,22 +72,6 @@ namespace Lumi.Commands
 
             result = command.Execute( input );
             return true;
-        }
-
-        public static ShellResult SetVariable( IReadOnlyList<IShellSegment> args )
-        {
-            if( args.Count != 2 )
-                return ShellResult.Error( -1, $"set: incorrect number of arguments. expecting 2, got {args.Count}" );
-
-            if( args[0] is VariableSegment variable )
-            {
-                var result = args[1].Execute( capture: true );
-                return result.ExitCode != 0
-                           ? result
-                           : variable.SetValue( result.StandardOutput.Join( Environment.NewLine ) );
-            }
-
-            return ShellResult.Error( -2, "set: first argument must be a variable" );
         }
 
         //public static void LoadExtensions( string dir )

@@ -44,6 +44,16 @@ namespace Lumi
 
             AppConfig.FilePath = Path.Combine( Program.SourceDirectory, AppConfig.FileName );
 
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            if( ForceOverwrite || !File.Exists( AppConfig.FilePath ) )
+                AppConfig.SaveDefaultConfig();
+        }
+
+        public AppConfig()
+            => this.Temporary = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase );
+
+        public static void SaveDefaultConfig()
+        {
             var @default = new AppConfig
             {
                 ColorScheme = new ColorScheme(),
@@ -53,13 +63,8 @@ namespace Lumi
                 DefaultVariableScope = null
             };
 
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            if( ForceOverwrite || !File.Exists( AppConfig.FilePath ) )
-                @default.Save();
+            @default.Save();
         }
-
-        public AppConfig()
-            => this.Temporary = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase );
 
         public static AppConfig Load()
         {

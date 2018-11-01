@@ -58,6 +58,8 @@
     <Compile Include="Commands\Exit.cs" />
     <Compile Include="Commands\ICommand.cs" />
     <Compile Include="Commands\PrintWorkingDirectory.cs" />
+    <Compile Include="Commands\ReloadConfig.cs" />
+    <Compile Include="Commands\ResetConfig.cs" />
     <Compile Include="Commands\Split.cs" />
     <Compile Include="AppConfig.cs" />
     <Compile Include="ConsoleEx.cs" />

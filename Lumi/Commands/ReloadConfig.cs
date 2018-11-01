@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Lumi.Shell;
 using PowerArgs;
 
@@ -12,7 +14,7 @@ namespace Lumi.Commands
         "UnusedAutoPropertyAccessor.Local",
         Justification = "Private setters are needed by PowerArgs"
     )]
-    internal sealed class ChangeDirectory : ICommand
+    internal sealed class ReloadConfig : ICommand
     {
         [CustomHelpHook]
         [ArgShortcut( "?" )]
@@ -20,23 +22,12 @@ namespace Lumi.Commands
         [ArgDescription( "Show this help screen." )]
         public bool Help { get; private set; }
 
-        [ArgPosition( 0 )]
-        public string Path { get; private set; }
-
         [ArgIgnore]
-        public string Name { get; } = "cd";
+        public string Name { get; } = "Reload-Config";
 
         public ShellResult Execute( IReadOnlyList<string> input )
         {
-            if( String.IsNullOrWhiteSpace( this.Path ) )
-                this.Path = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );
-
-            var fullPath = System.IO.Path.GetFullPath( ShellUtil.ProcessTilde( this.Path ) );
-
-            if( !Directory.Exists( fullPath ) )
-                return ShellResult.Error( -1, $"cd: directory '{this.Path}' could not be found" );
-
-            Directory.SetCurrentDirectory( fullPath );
+            Program.ReloadConfig();
             return ShellResult.Ok();
         }
     }

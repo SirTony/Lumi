@@ -76,7 +76,7 @@ namespace Lumi.Shell
 
         public static string ProcessTilde( string path )
         {
-            if( !path.StartsWith( "~" ) || !Program.AppConfig.UseTilde )
+            if( !path.StartsWith( "~" ) || !Program.Config.UseTilde )
                 return ShellUtil.GetProperDirectoryCapitalization( path );
 
             var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );
