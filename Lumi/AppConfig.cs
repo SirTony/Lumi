@@ -4,23 +4,23 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace Lumi.Config
+namespace Lumi
 {
     [JsonObject( MemberSerialization = MemberSerialization.OptIn )]
-    internal sealed class ConfigManager
+    internal sealed class AppConfig
     {
         private const string FileName = "lumi.json";
 
         private static readonly string FilePath;
-
-        public static ConfigManager Instance { get; }
-        public static ConfigManager Default { get; }
 
         [JsonProperty( Required = Required.Always )]
         public ColorScheme ColorScheme { get; private set; }
 
         [JsonProperty( Required = Required.Always )]
         public bool UseTilde { get; private set; }
+
+        [JsonProperty( Required = Required.Default )]
+        public string DefaultVariableScope { get; private set; }
 
         /// <summary>
         ///     Variables that persist across all instances and shell sessions.
@@ -34,7 +34,7 @@ namespace Lumi.Config
         [JsonIgnore]
         public Dictionary<string, string> Temporary { get; private set; }
 
-        static ConfigManager()
+        static AppConfig()
         {
 #if DEBUG
             const bool ForceOverwrite = true;
@@ -42,39 +42,43 @@ namespace Lumi.Config
             const bool ForceOverwrite = false;
 #endif
 
-            ConfigManager.FilePath = Path.Combine( Program.SourceDirectory, ConfigManager.FileName );
+            AppConfig.FilePath = Path.Combine( Program.SourceDirectory, AppConfig.FileName );
 
-            ConfigManager.Default = new ConfigManager
+            var @default = new AppConfig
             {
                 ColorScheme = new ColorScheme(),
                 UseTilde = true,
                 Persistent = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase ),
-                Temporary = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase )
+                Temporary = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase ),
+                DefaultVariableScope = null
             };
 
-            if( ForceOverwrite || !File.Exists( ConfigManager.FilePath ) )
-                ConfigManager.SaveImpl( ConfigManager.Default );
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            if( ForceOverwrite || !File.Exists( AppConfig.FilePath ) )
+                @default.Save();
+        }
 
-            var json = File.ReadAllText( ConfigManager.FilePath, Encoding.UTF8 );
-            ConfigManager.Instance = JsonConvert.DeserializeObject<ConfigManager>( json );
+        public AppConfig()
+            => this.Temporary = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase );
+
+        public static AppConfig Load()
+        {
+            var json = File.ReadAllText( AppConfig.FilePath, Encoding.UTF8 );
+            var obj = JsonConvert.DeserializeObject<AppConfig>( json );
 
             // This dictionary must be case-insensitive and the Comparer property is read-only
-            ConfigManager.Instance.Persistent = new Dictionary<string, string>(
-                ConfigManager.Instance.Persistent,
+            obj.Persistent = new Dictionary<string, string>(
+                obj.Persistent,
                 StringComparer.OrdinalIgnoreCase
             );
 
-            // Temp variables don't exist in hte JSON file, so set up the dictionary manually
-            ConfigManager.Instance.Temporary = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase );
+            return obj;
         }
 
-        public static void Save()
-            => ConfigManager.SaveImpl( ConfigManager.Instance );
-
-        private static void SaveImpl( ConfigManager what )
+        public void Save()
         {
-            var json = JsonConvert.SerializeObject( what, Formatting.Indented );
-            File.WriteAllText( ConfigManager.FilePath, json, Encoding.UTF8 );
+            var json = JsonConvert.SerializeObject( this, Formatting.Indented );
+            File.WriteAllText( AppConfig.FilePath, json, Encoding.UTF8 );
         }
     }
 }

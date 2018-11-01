@@ -18,7 +18,7 @@ namespace Lumi.Shell
         static ShellLexer() => ShellLexer.Punctuation = new Dictionary<char, ShellTokenKind>
         {
             ['$'] = ShellTokenKind.Dollar,
-            ['#'] = ShellTokenKind.Octothorpe,
+            ['#'] = ShellTokenKind.Hash,
             [';'] = ShellTokenKind.Semicolon,
 
             //[':'] = ShellTokenKind.Colon,
@@ -28,8 +28,8 @@ namespace Lumi.Shell
             ['>'] = ShellTokenKind.RightAngle,
             ['('] = ShellTokenKind.LeftParen,
             [')'] = ShellTokenKind.RightParen,
-            ['['] = ShellTokenKind.LeftSquare,
-            [']'] = ShellTokenKind.RightSquare
+            //['['] = ShellTokenKind.LeftSquare,
+            //[']'] = ShellTokenKind.RightSquare
         };
 
         public ShellLexer( string commandLine )

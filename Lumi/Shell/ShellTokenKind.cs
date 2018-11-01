@@ -4,15 +4,15 @@
     {
         Literal,
         Dollar,
-        Octothorpe,
+        Hash,
         Semicolon,
 
         //Colon,
 
         LeftParen,
         RightParen,
-        LeftSquare,
-        RightSquare,
+        //LeftSquare,
+        //RightSquare,
         LeftAngle,
         RightAngle,
         DoubleRightAngle,

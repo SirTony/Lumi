@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Lumi.Config;
 
 namespace Lumi.Shell
 {
@@ -77,7 +76,7 @@ namespace Lumi.Shell
 
         public static string ProcessTilde( string path )
         {
-            if( !path.StartsWith( "~" ) || !ConfigManager.Instance.UseTilde )
+            if( !path.StartsWith( "~" ) || !Program.AppConfig.UseTilde )
                 return ShellUtil.GetProperDirectoryCapitalization( path );
 
             var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );

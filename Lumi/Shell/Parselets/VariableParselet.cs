@@ -1,4 +1,5 @@
-﻿using Lumi.Shell.Segments;
+﻿using System;
+using Lumi.Shell.Segments;
 
 namespace Lumi.Shell.Parselets
 {
@@ -6,15 +7,15 @@ namespace Lumi.Shell.Parselets
     {
         public IShellSegment Parse( ShellParser parser, IShellSegment parent, ShellToken token )
         {
-            if( parser.Peek().Kind != ShellTokenKind.LeftSquare )
-                return new VariableSegment( parent, parser.Take( ShellTokenKind.Literal, token ).Text );
+            var literal = parser.Take( ShellTokenKind.Literal, token ).Text;
+            if( !literal.Contains( ":" ) )
+                return new VariableSegment( parent, Program.AppConfig.DefaultVariableScope, literal );
 
-            parser.Take( ShellTokenKind.LeftSquare, token );
-            var scope = parser.Take( ShellTokenKind.Literal, token );
-            parser.Take( ShellTokenKind.RightSquare, token );
+            var colon = literal.IndexOf( ":", StringComparison.Ordinal );
+            var scope = literal.Substring( 0, colon );
+            var name = literal.Substring( colon + 1 );
 
-            var name = parser.Take( ShellTokenKind.Literal, token );
-            return new VariableSegment( parent, scope.Text, name.Text );
+            return new VariableSegment( parent, scope, name );
         }
     }
 }

@@ -17,10 +17,10 @@ namespace Lumi
 
         [CustomHelpHook]
         [ArgShortcut( "?" )]
+        [ArgShortcut( "h" )]
         [ArgDescription( "Show this help screen." )]
         public bool Help { get; private set; }
 
-        [ArgDefaultValue( "" )]
         [ArgShortcut( "e" )]
         [ArgDescription( "Evaluate a command then exit without entering interactive mode." )]
         public string EvaluateCommand { get; private set; }

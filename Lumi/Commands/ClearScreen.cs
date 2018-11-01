@@ -14,8 +14,9 @@ namespace Lumi.Commands
     [Alias( "cls" )]
     internal sealed class ClearScreen : ICommand
     {
-        [CustomHelpHook( "clear" )]
+        [CustomHelpHook]
         [ArgShortcut( "?" )]
+        [ArgShortcut( "h" )]
         [ArgDescription( "Show this help screen." )]
         public bool Help { get; private set; }
 

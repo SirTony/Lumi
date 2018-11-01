@@ -1,5 +1,4 @@
 ﻿using Colorful;
-using Lumi.Config;
 
 namespace Lumi
 {
@@ -8,7 +7,7 @@ namespace Lumi
         public static void WriteWarning( string message )
         {
             Console.Write( "[" );
-            Console.Write( "WRN", ConfigManager.Instance.ColorScheme.WarningColor );
+            Console.Write( "WRN", Program.AppConfig.ColorScheme.WarningColor );
             Console.Write( "] :: " );
             Console.WriteLine( message );
         }
@@ -16,7 +15,7 @@ namespace Lumi
         public static void WriteError( string message )
         {
             Console.Write( "[" );
-            Console.Write( "ERR", ConfigManager.Instance.ColorScheme.ErrorColor );
+            Console.Write( "ERR", Program.AppConfig.ColorScheme.ErrorColor );
             Console.Write( "] :: " );
             Console.WriteLine( message );
         }
@@ -24,7 +23,7 @@ namespace Lumi
         public static void WriteNotice( string message )
         {
             Console.Write( "[" );
-            Console.Write( "INF", ConfigManager.Instance.ColorScheme.NoticeColor );
+            Console.Write( "INF", Program.AppConfig.ColorScheme.NoticeColor );
             Console.Write( "] :: " );
             Console.WriteLine( message );
         }

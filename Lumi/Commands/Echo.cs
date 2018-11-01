@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Lumi.Shell;
 using PowerArgs;
 
@@ -11,7 +12,7 @@ namespace Lumi.Commands
         "UnusedAutoPropertyAccessor.Local",
         Justification = "Private setters are needed by PowerArgs"
     )]
-    internal sealed class Exit : ICommand
+    internal sealed class Echo : ICommand
     {
         [CustomHelpHook]
         [ArgShortcut( "?" )]
@@ -20,16 +21,15 @@ namespace Lumi.Commands
         public bool Help { get; private set; }
 
         [ArgPosition( 0 )]
-        [ArgDefaultValue( 0 )]
-        private int ExitCode { get; set; }
+        public List<string> Text { get; private set; }
 
         [ArgIgnore]
-        public string Name { get; } = "exit";
+        public string Name { get; } = "echo";
 
         public ShellResult Execute( IReadOnlyList<string> input )
         {
-            Environment.Exit( this.ExitCode );
-            return default;
+            var line = this.Text.Concat( input ?? Array.Empty<string>() ).Join( " " );
+            return ShellResult.Ok( line );
         }
     }
 }

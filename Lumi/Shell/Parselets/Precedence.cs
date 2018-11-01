@@ -5,6 +5,7 @@
         Invalid,
         Sequence,
         Pipe,
-        Redirection
+        Redirection,
+        Command
     }
 }

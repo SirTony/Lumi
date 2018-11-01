@@ -23,7 +23,7 @@ namespace Lumi.Shell
             ShellParser.Segments = new Dictionary<ShellTokenKind, ISegmentParselet>
             {
                 [ShellTokenKind.Literal] = new CommandParselet(),
-                [ShellTokenKind.Octothorpe] = new InterpolationParselet(),
+                [ShellTokenKind.Hash] = new InterpolationParselet(),
                 [ShellTokenKind.Dollar] = new VariableParselet()
             };
 

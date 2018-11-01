@@ -18,7 +18,7 @@ namespace Lumi.Shell.Parselets
 
             var args = new List<IShellSegment>();
             while( parser.HasSegment() )
-                args.Add( parser.Parse() );
+                args.Add( parser.Parse( Precedence.Command ) );
 
             var command = new CommandSegment( parent, token.Text, args.ToArray() );
             command.Arguments.ForEach( x => x.Parent = command );

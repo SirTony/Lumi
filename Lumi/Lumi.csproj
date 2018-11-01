@@ -54,11 +54,12 @@
     <Compile Include="Commands\AliasAttribute.cs" />
     <Compile Include="Commands\ChangeDirectory.cs" />
     <Compile Include="Commands\ClearScreen.cs" />
+    <Compile Include="Commands\Echo.cs" />
     <Compile Include="Commands\Exit.cs" />
     <Compile Include="Commands\ICommand.cs" />
     <Compile Include="Commands\PrintWorkingDirectory.cs" />
     <Compile Include="Commands\Split.cs" />
-    <Compile Include="ConfigManager.cs" />
+    <Compile Include="AppConfig.cs" />
     <Compile Include="ConsoleEx.cs" />
     <Compile Include="CustomHelpHook.cs" />
     <Compile Include="Prompt.cs" />

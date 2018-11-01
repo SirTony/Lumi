@@ -3,23 +3,18 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Lumi.Commands;
 using PowerArgs;
 
 namespace Lumi
 {
     internal class CustomHelpHook : ArgHook
     {
-        public string CommandName { get; }
         public Version Version { get; }
-        public bool SuppressBanner { get; }
 
-        public CustomHelpHook( string commandName = null, bool suppressBanner = false )
+        public CustomHelpHook()
         {
-            this.SuppressBanner = suppressBanner;
             this.AfterCancelPriority = 0;
-            this.CommandName = String.IsNullOrWhiteSpace( commandName )
-                                   ? Path.GetFileName( Program.ExecutablePath )
-                                   : commandName;
 
             var versionStr = Program.Assembly.GetCustomAttribute<AssemblyVersionAttribute>()?.Version
                           ?? Program.Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
@@ -33,16 +28,16 @@ namespace Lumi
 
             var sb = new StringBuilder();
 
-            this.BuildBanner( sb );
-            this.BuildUsageLine( sb, context );
+            this.BuildBanner( sb, context );
+            CustomHelpHook.BuildUsageLine( sb, context );
             CustomHelpHook.BuildArgumentsList( sb, context );
 
             Console.Error.WriteLine( sb.ToString() );
         }
 
-        private void BuildBanner( StringBuilder sb )
+        private void BuildBanner( StringBuilder sb, HookContext context )
         {
-            if( this.SuppressBanner )
+            if( context.Args is ICommand )
                 return;
 
             sb.AppendFormat(
@@ -59,11 +54,12 @@ namespace Lumi
               .AppendLine();
         }
 
-        private void BuildUsageLine( StringBuilder sb, HookContext context )
+        private static void BuildUsageLine( StringBuilder sb, HookContext context )
         {
             const int ChunkSize = 3;
 
-            var usagePrefix = $"USAGE: {this.CommandName} ";
+            var commandName = context.Args is ICommand cmd ? cmd.Name : Path.GetFileName( Program.ExecutablePath );
+            var usagePrefix = $"USAGE: {commandName} ";
             sb.Append( usagePrefix );
 
             if( context.Definition.HasActions )
@@ -147,7 +143,7 @@ namespace Lumi
                 if( text.Length < width )
                     return $"{DescriptionSeparator}{text}";
 
-                var lines = text.InChunksOf( width ).Select( x => x.Trim() );
+                var lines = text.InChunksOf( width ).Select( x => x.Trim() ).ToArray();
                 var indent = new string( ' ', startIndex - 4 );
 
                 return $"{DescriptionSeparator}{lines.First()}{Environment.NewLine}"

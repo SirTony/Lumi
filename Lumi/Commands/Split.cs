@@ -19,8 +19,9 @@ namespace Lumi.Commands
     )]
     internal sealed class Split : ICommand
     {
-        [CustomHelpHook( "cd" )]
+        [CustomHelpHook]
         [ArgShortcut( "?" )]
+        [ArgShortcut( "h" )]
         [ArgDescription( "Show this help screen." )]
         public bool Help { get; private set; }
 

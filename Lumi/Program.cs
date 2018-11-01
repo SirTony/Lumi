@@ -2,10 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Lumi.Commands;
-using Lumi.Config;
 using Lumi.Shell;
-using Lumi.Shell.Segments;
 using Lumi.Shell.Visitors;
 using Newtonsoft.Json;
 using Args = PowerArgs.Args;
@@ -27,6 +24,7 @@ namespace Lumi
         public const bool IsDebug = false;
 #endif
 
+        public static AppConfig AppConfig { get; }
         public static Assembly Assembly { get; }
         public static string ExecutablePath { get; }
         public static string SourceDirectory { get; }
@@ -38,6 +36,9 @@ namespace Lumi
 
             Program.ExecutablePath = uri.LocalPath;
             Program.SourceDirectory = Path.GetDirectoryName( uri.LocalPath );
+
+            // Must be assigned after SourceDirectory because AppConfig's static ctor depends on it.
+            Program.AppConfig = AppConfig.Load();
         }
 
         private static void Main( string[] args )
@@ -47,7 +48,7 @@ namespace Lumi
             };
 
             Console.Title = Program.DefaultTitle;
-            ConfigManager.Instance.ColorScheme.Apply();
+            Program.AppConfig.ColorScheme.Apply();
             Console.Clear();
 
             var parsed = Args.Parse<CommandLineArguments>( args );
@@ -110,16 +111,7 @@ namespace Lumi
                 if( args.NoExecute )
                     return;
 
-                // The built-in "set" command has to be processed up-front because it depends on
-                // the second argument being a VariableSegment which has to remain as-is
-                // because we use the syntax 'set $cfg:Foo "some value"'
-                // and if we execute the segment the variable will be expanded to it's actual value
-                // which we don't want
-                var result = segment is CommandSegment cmd
-                          && cmd.Command.Equals( "set", StringComparison.OrdinalIgnoreCase )
-                                 ? BuiltInCommands.SetVariable( cmd.Arguments )
-                                 : segment.Execute();
-
+                var result = segment.Execute();
                 Environment.ExitCode = result.ExitCode;
 
                 result.StandardOutput?.ForEach( Console.Out.WriteLine );
@@ -149,8 +141,8 @@ namespace Lumi
                 var line = new string( '─', len );
 
                 Console.WriteLine( section );
-                Console.WriteLine( $"{whitespace}^", ConfigManager.Instance.ColorScheme.ErrorColor );
-                Console.WriteLine( $"{line}┘", ConfigManager.Instance.ColorScheme.ErrorColor );
+                Console.WriteLine( $"{whitespace}^", Program.AppConfig.ColorScheme.ErrorColor );
+                Console.WriteLine( $"{line}┘", Program.AppConfig.ColorScheme.ErrorColor );
             }
             catch( ProgramNotFoundException ex ) when( !Program.IsDebug )
             {
@@ -169,7 +161,7 @@ namespace Lumi
 
         private static void WritePrompt()
         {
-            var scheme = ConfigManager.Instance.ColorScheme;
+            var scheme = Program.AppConfig.ColorScheme;
 
             Console.Write( "$ " );
             Console.Write( Environment.UserName, scheme.PromptUserNameColor );
@@ -183,7 +175,7 @@ namespace Lumi
             var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ).ToLowerInvariant();
             var current = ShellUtil.GetProperDirectoryCapitalization( Directory.GetCurrentDirectory() );
 
-            return current.ToLowerInvariant().StartsWith( home ) && ConfigManager.Instance.UseTilde
+            return current.ToLowerInvariant().StartsWith( home ) && Program.AppConfig.UseTilde
                        ? $"~{current.Substring( home.Length )}"
                        : current;
         }
