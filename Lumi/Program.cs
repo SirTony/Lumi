@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Runtime.InteropServices;
+using Lumi.Core;
 using Lumi.Shell;
-using Lumi.Shell.Visitors;
-using Newtonsoft.Json;
+using Lumi.Shell.Parsing;
 using Args = PowerArgs.Args;
 using Console = Colorful.Console;
 
@@ -14,38 +17,79 @@ using Console = Colorful.Console;
 
 namespace Lumi
 {
+    internal static class NativeMethods
+    {
+        public static Color SystemWindowColor
+        {
+            get
+            {
+                var colors = new DWMCOLORIZATIONCOLORS();
+                NativeMethods.DwmGetColorizationParameters( ref colors );
+
+                return Color.FromArgb(
+                    255,
+                    (byte) ( colors.ColorizationColor >> 16 ),
+                    (byte) ( colors.ColorizationColor >> 8 ),
+                    (byte) colors.ColorizationColor
+                );
+            }
+        }
+
+        [DllImport( "dwmapi.dll", EntryPoint = "#127" )]
+        private static extern void DwmGetColorizationParameters( ref DWMCOLORIZATIONCOLORS colors );
+
+        public static double CalculateLuminance( this Color c )
+            => Math.Sqrt( Math.Pow( 0.299 * c.R, 2 ) + Math.Pow( 0.587 * c.G, 2 ) + Math.Pow( 0.114 * c.B, 2 ) );
+
+        public static double CalculateContrastRatio( this Color a, Color b )
+            => ( a.CalculateLuminance() + 0.05 ) / ( b.CalculateLuminance() + 0.05 );
+    }
+
+    public struct DWMCOLORIZATIONCOLORS
+    {
+        public uint ColorizationColor,
+                    ColorizationAfterglow,
+                    ColorizationColorBalance,
+                    ColorizationAfterglowBalance,
+                    ColorizationBlurBalance,
+                    ColorizationGlassReflectionIntensity,
+                    ColorizationOpaqueBlend;
+    }
+
     internal static class Program
     {
         private const string DefaultTitle = "Lumi";
 
-#if DEBUG
-        public const bool IsDebug = true;
-#else
-        public const bool IsDebug = false;
-#endif
-
         public static AppConfig Config { get; private set; }
-        public static Assembly Assembly { get; }
-        public static string ExecutablePath { get; }
-        public static string SourceDirectory { get; }
 
         static Program()
-        {
-            Program.Assembly = typeof( Program ).Assembly;
-            var uri = new Uri( Program.Assembly.CodeBase );
-
-            Program.ExecutablePath = uri.LocalPath;
-            Program.SourceDirectory = Path.GetDirectoryName( uri.LocalPath );
-
-            // Must be assigned after SourceDirectory because AppConfig's static ctor depends on it.
-            Program.Config = AppConfig.Load();
-        }
+            => Program.Config = AppConfig.Load();
 
         private static void Main( string[] args )
         {
             Console.CancelKeyPress += ( s, e ) => {
                 e.Cancel = true;
             };
+
+            //var wndColor = NativeMethods.SystemWindowColor;
+            //var useDark = wndColor.CalculateContrastRatio( Color.White ) >= 0.6;
+
+            //var windowsScheme = new ColorScheme
+            //{
+            //    Background = wndColor,
+            //    Foreground = SystemColors.ActiveCaptionText,
+            //    ErrorColor = !useDark ? Color.DarkRed : Color.Firebrick,
+            //    NoticeColor = !useDark ? Color.Teal : Color.Cyan,
+            //    WarningColor = !useDark ? Color.DarkGoldenrod : Color.Khaki,
+            //    PromptDirectoryColor = SystemColors.ActiveCaptionText,
+            //    PromptUserNameColor = SystemColors.ActiveCaptionText,
+            //};
+
+            //windowsScheme.Apply();
+            //Console.Clear();
+            //windowsScheme.DisplayTest();
+
+            //return;
 
             Console.Title = Program.DefaultTitle;
             Program.Config.ColorScheme.Apply();
@@ -86,48 +130,37 @@ namespace Lumi
                 var parser = new ShellParser( lexer.Tokenize() );
                 var segment = parser.ParseAll();
 
-                if( args.PrintTokens )
-                    lexer.Tokenize().ForEach( x => Console.WriteLine( x.ToString( true ) ) );
+                var result = segment.Execute( Program.Config, captureOutput: true );
+                Environment.ExitCode = result.ExitCode;
 
-                switch( args.PrintTree )
+                switch( result.Value )
                 {
-                    case CommandLineArguments.ParseTreeFormat.None:
+                    case StandardStreams std:
+                        std.StandardOutput?.Reject( x => x is null )?.ForEach( Console.Out.WriteLine );
+                        std.StandardError?.Reject( x => x is null )?.ForEach( Console.Error.WriteLine );
                         break;
 
-                    case CommandLineArguments.ParseTreeFormat.Default:
-                        var printer = new DebugPrintVisitor( Console.Out );
-                        segment.Accept( printer );
-                        break;
-
-                    case CommandLineArguments.ParseTreeFormat.Json:
-                        var json = JsonConvert.SerializeObject( segment, Formatting.Indented );
-                        Console.WriteLine( json );
+                    case IEnumerable<string> lines:
+                        lines.Reject( x => x is null ).ForEach( Console.Out.WriteLine );
                         break;
 
                     default:
-                        throw new NotImplementedException();
+                        if( result.Value is null ) break;
+                        Console.WriteLine( result.Value.ToString() );
+                        break;
                 }
-
-                if( args.NoExecute )
-                    return;
-
-                var result = segment.Execute();
-                Environment.ExitCode = result.ExitCode;
-
-                result.StandardOutput?.ForEach( Console.Out.WriteLine );
-                result.StandardError?.ForEach( Console.Error.WriteLine );
             }
-            catch( ShellSyntaxException ex ) when( !Program.IsDebug )
+            catch( ShellSyntaxException ex ) when( !Debugger.IsAttached )
             {
                 Console.WriteLine();
-                ConsoleEx.WriteError( ex.Message );
+                ConsoleEx.WriteError( $"{ex.Message} at position {ex.Span.Start.Index}" );
                 Console.WriteLine();
 
                 const int PaddingSize = 10;
                 const string PrefixEllipsis = "... ";
 
-                var trim = ex.Start > PaddingSize && input.Length > Console.BufferWidth;
-                var section = trim ? $"{PrefixEllipsis}{input.Substring( ex.Start - PaddingSize )}" : input;
+                var trim = ex.Span.Start.Index > PaddingSize && input.Length > Console.BufferWidth;
+                var section = trim ? $"{PrefixEllipsis}{input.Substring( ex.Span.Start.Index - PaddingSize )}" : input;
 
                 if( section.Length > Console.BufferWidth )
                 {
@@ -136,7 +169,7 @@ namespace Lumi
                         $"{section.Substring( 0, Console.BufferWidth - TrailingEllipsis.Length )}{TrailingEllipsis}";
                 }
 
-                var len = trim ? PaddingSize + PrefixEllipsis.Length : ex.Start;
+                var len = trim ? PaddingSize + PrefixEllipsis.Length : ex.Span.Start.Index;
                 var whitespace = new string( ' ', len );
                 var line = new string( '─', len );
 
@@ -144,11 +177,11 @@ namespace Lumi
                 Console.WriteLine( $"{whitespace}^", Program.Config.ColorScheme.ErrorColor );
                 Console.WriteLine( $"{line}┘", Program.Config.ColorScheme.ErrorColor );
             }
-            catch( ProgramNotFoundException ex ) when( !Program.IsDebug )
+            catch( ProgramNotFoundException ex ) when( !Debugger.IsAttached )
             {
                 ConsoleEx.WriteError( $"'{ex.ProgramName}' is not a known command or executable file" );
             }
-            catch( Exception ex ) when( !Program.IsDebug )
+            catch( Exception ex ) when( !Debugger.IsAttached )
             {
                 Console.WriteLine( ex );
             }

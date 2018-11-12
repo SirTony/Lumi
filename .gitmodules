@@ -1,0 +1,3 @@
+[submodule "DotNetExtender"]
+	path = DotNetExtender
+	url = https://github.com/SirTony/DotNetExtender.git

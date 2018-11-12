@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Lumi.Commands;
+using Lumi.Core;
 using PowerArgs;
 
 namespace Lumi
@@ -16,8 +17,8 @@ namespace Lumi
         {
             this.AfterCancelPriority = 0;
 
-            var versionStr = Program.Assembly.GetCustomAttribute<AssemblyVersionAttribute>()?.Version
-                          ?? Program.Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+            var versionStr = AppConfig.Assembly.GetCustomAttribute<AssemblyVersionAttribute>()?.Version
+                          ?? AppConfig.Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
 
             this.Version = versionStr is null ? new Version() : Version.Parse( versionStr );
         }
@@ -42,14 +43,14 @@ namespace Lumi
 
             sb.AppendFormat(
                 "{0} {1} - {2}",
-                Program.Assembly.GetCustomAttribute<AssemblyTitleAttribute>().Title,
+                AppConfig.Assembly.GetCustomAttribute<AssemblyTitleAttribute>().Title,
                 $"{this.Version.Major}.{this.Version.Minor}",
-                Program.Assembly.GetCustomAttribute<AssemblyDescriptionAttribute>().Description
+                AppConfig.Assembly.GetCustomAttribute<AssemblyDescriptionAttribute>().Description
             );
 
             sb.AppendLine()
               .AppendLine(
-                   Program.Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>().Copyright.Replace( "©", "(c)" )
+                   AppConfig.Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>().Copyright.Replace( "©", "(c)" )
                )
               .AppendLine();
         }
@@ -58,7 +59,7 @@ namespace Lumi
         {
             const int ChunkSize = 3;
 
-            var commandName = context.Args is ICommand cmd ? cmd.Name : Path.GetFileName( Program.ExecutablePath );
+            var commandName = context.Args is ICommand cmd ? cmd.Name : Path.GetFileName( AppConfig.ExecutablePath );
             var usagePrefix = $"USAGE: {commandName} ";
             sb.Append( usagePrefix );
 
