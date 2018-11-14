@@ -7,6 +7,13 @@ using Newtonsoft.Json;
 
 namespace Lumi.Core
 {
+    public enum PromptStyle
+    {
+        Default,
+        Unix,
+        Windows,
+    }
+
     [JsonObject( MemberSerialization = MemberSerialization.OptIn )]
     public sealed class AppConfig
     {
@@ -25,10 +32,10 @@ namespace Lumi.Core
         private static readonly string FilePath;
 
         [JsonProperty( Required = Required.Always )]
-        public ColorScheme ColorScheme { get; private set; }
+        public ColorScheme ColorScheme { get; set; }
 
         [JsonProperty( Required = Required.Default )]
-        public string DefaultVariableScope { get; private set; }
+        public string DefaultVariableScope { get; set; }
 
         /// <summary>
         ///     Disable certain built-in commands.
@@ -40,7 +47,10 @@ namespace Lumi.Core
         ///     Disable all built-in commands.
         /// </summary>
         [JsonProperty( Required = Required.Default )]
-        public bool DisableAllCommands { get; private set; }
+        public bool DisableAllCommands { get; set; }
+
+        [JsonProperty( Required = Required.Always )]
+        public PromptStyle PromptStyle { get; set; }
 
         /// <summary>
         ///     Variables that persist across all instances and shell sessions.
@@ -79,9 +89,7 @@ namespace Lumi.Core
                 ColorScheme = new ColorScheme(),
                 Persistent = new Dictionary<string, object>( StringComparer.OrdinalIgnoreCase ),
                 Temporary = new Dictionary<string, object>( StringComparer.OrdinalIgnoreCase ),
-                DefaultVariableScope = null,
                 DisabledCommands = new HashSet<string>( StringComparer.OrdinalIgnoreCase ),
-                DisableAllCommands = false
             };
 
             @default.Save();

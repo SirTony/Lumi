@@ -11,50 +11,12 @@ using Lumi.Shell;
 using Lumi.Shell.Parsing;
 using Lumi.Shell.Segments;
 using Newtonsoft.Json;
+using ArgExceptionPolicy = PowerArgs.ArgExceptionPolicy;
 using Args = PowerArgs.Args;
 using Console = Colorful.Console;
 
 namespace Lumi
 {
-    internal static class NativeMethods
-    {
-        public static Color SystemWindowColor
-        {
-            get
-            {
-                var colors = new DWMCOLORIZATIONCOLORS();
-                NativeMethods.DwmGetColorizationParameters( ref colors );
-
-                return Color.FromArgb(
-                    255,
-                    (byte) ( colors.ColorizationColor >> 16 ),
-                    (byte) ( colors.ColorizationColor >> 8 ),
-                    (byte) colors.ColorizationColor
-                );
-            }
-        }
-
-        [DllImport( "dwmapi.dll", EntryPoint = "#127" )]
-        private static extern void DwmGetColorizationParameters( ref DWMCOLORIZATIONCOLORS colors );
-
-        public static double CalculateLuminance( this Color c )
-            => Math.Sqrt( Math.Pow( 0.299 * c.R, 2 ) + Math.Pow( 0.587 * c.G, 2 ) + Math.Pow( 0.114 * c.B, 2 ) );
-
-        public static double CalculateContrastRatio( this Color a, Color b )
-            => ( a.CalculateLuminance() + 0.05 ) / ( b.CalculateLuminance() + 0.05 );
-    }
-
-    public struct DWMCOLORIZATIONCOLORS
-    {
-        public uint ColorizationColor,
-                    ColorizationAfterglow,
-                    ColorizationColorBalance,
-                    ColorizationAfterglowBalance,
-                    ColorizationBlurBalance,
-                    ColorizationGlassReflectionIntensity,
-                    ColorizationOpaqueBlend;
-    }
-
     // ReSharper disable once ClassNeverInstantiated.Global
     [SuppressMessage(
         "ReSharper",
@@ -82,26 +44,6 @@ namespace Lumi
                 e.Cancel = true;
             };
 
-            //var wndColor = NativeMethods.SystemWindowColor;
-            //var useDark = wndColor.CalculateContrastRatio( Color.White ) >= 0.6;
-
-            //var windowsScheme = new ColorScheme
-            //{
-            //    Background = wndColor,
-            //    Foreground = SystemColors.ActiveCaptionText,
-            //    ErrorColor = !useDark ? Color.DarkRed : Color.Firebrick,
-            //    NoticeColor = !useDark ? Color.Teal : Color.Cyan,
-            //    WarningColor = !useDark ? Color.DarkGoldenrod : Color.Khaki,
-            //    PromptDirectoryColor = SystemColors.ActiveCaptionText,
-            //    PromptUserNameColor = SystemColors.ActiveCaptionText,
-            //};
-
-            //windowsScheme.Apply();
-            //Console.Clear();
-            //windowsScheme.DisplayTest();
-
-            //return;
-
             Console.Title = Program.DefaultTitle;
             Program.Config.ColorScheme.Apply();
             Console.Clear();
@@ -117,7 +59,18 @@ namespace Lumi
                 ConsoleEx.WriteError( ex.Message );
             }
 
-            Args.InvokeAction<Program>( args );
+            // dumb hack because PowerArgs is throwing an exception
+            // if the program is run without an action specified on the command line.
+            // but we don't want that, so we're silencing this exception.
+            // there has got to be a correct way to do this.
+            try
+            {
+                Args.InvokeAction<Program>( args );
+            }
+            catch
+            {
+                Program.Run();
+            }
         }
 
         [PowerArgs.ArgDescription( "Tokenize command line and print the token stream in JSON format" )]
@@ -152,12 +105,12 @@ namespace Lumi
         )
         {
             if( String.IsNullOrWhiteSpace( command ) )
-                this.Main();
+                Program.Run();
             else
                 Program.ExecuteCommand( command );
         }
-
-        private void Main()
+        
+        private static void Run()
         {
             while( true )
             {
@@ -214,11 +167,33 @@ namespace Lumi
         {
             var scheme = Program.Config.ColorScheme;
 
-            Console.Write( "$ " );
-            Console.Write( Environment.UserName, scheme.PromptUserNameColor );
-            Console.Write( "@" );
-            Console.Write( ShellUtility.GetCurrentDirectory(), scheme.PromptDirectoryColor );
-            Console.Write( "> " );
+            switch( Program.Config.PromptStyle )
+            {
+                case PromptStyle.Default:
+                    Console.Write( "$ " );
+                    Console.Write( Environment.UserName, scheme.PromptUserNameColor );
+                    Console.Write( "@" );
+                    Console.Write( ShellUtility.GetCurrentDirectory(), scheme.PromptDirectoryColor );
+                    Console.Write( "> " );
+                    break;
+
+                case PromptStyle.Unix:
+                    Console.Write( Environment.UserName, scheme.PromptUserNameColor );
+                    Console.Write( "@" );
+                    Console.WriteLine( Environment.MachineName, scheme.PromptUserNameColor );
+                    Console.Write( ":" );
+                    Console.Write( ShellUtility.GetCurrentDirectory(), scheme.PromptDirectoryColor );
+                    Console.Write( "$ " );
+                    break;
+
+                case PromptStyle.Windows:
+                    Console.Write( ShellUtility.GetCurrentDirectory(), scheme.PromptDirectoryColor );
+                    Console.Write( "> " );
+                    break;
+
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         private static IShellSegment ParseCommandLine(

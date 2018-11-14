@@ -54,6 +54,7 @@
     <Compile Include="Commands\Echo.cs" />
     <Compile Include="Commands\Exit.cs" />
     <Compile Include="Commands\PrintWorkingDirectory.cs" />
+    <Compile Include="Commands\Theme.cs" />
     <Compile Include="ConsoleEx.cs" />
     <Compile Include="CustomHelpHook.cs" />
     <Compile Include="Program.cs" />

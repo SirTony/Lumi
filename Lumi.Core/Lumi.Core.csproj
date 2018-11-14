@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppConfig.cs" />
+    <Compile Include="ColorExtensions.cs" />
     <Compile Include="Converters\BasicConverter.cs" />
     <Compile Include="ColorScheme.cs" />
     <Compile Include="Converters\ColorConverter.cs" />
