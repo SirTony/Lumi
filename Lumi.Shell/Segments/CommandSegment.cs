@@ -43,19 +43,13 @@ namespace Lumi.Shell.Segments
             if( commandSegment.ExitCode != 0 || !( commandSegment.Value is string commandName ) )
                 throw new InvalidOperationException( "Command name must evaluate to a string" );
 
-            var hasBuiltInCommand = Commands.TryGetCommandByName( commandName, out var command )
-                                 && !config.DisableAllCommands
-                                 && !config.DisabledCommands.Contains( commandName );
-
-            if( hasBuiltInCommand )
-                return command.Execute( input );
-
+            var result = default( ShellResult );
             var args = new List<string>();
             if( this.Arguments != null )
             {
                 foreach( var item in this.Arguments )
                 {
-                    var result = item.Execute( config, captureOutput: true );
+                    result = item.Execute( config, captureOutput: true );
                     switch( result.Value )
                     {
                         case Exception e when !result:
@@ -81,11 +75,24 @@ namespace Lumi.Shell.Segments
                 }
             }
 
+            var hasBuiltInCommand = !config.DisableAllCommands
+                                 && !config.DisabledCommands.Contains( commandName )
+                                 && Commands.TryExecuteCommandByName(
+                                        commandName,
+                                        config,
+                                        args.ToArray(),
+                                        input,
+                                        out result
+                                    );
+
+            if( hasBuiltInCommand )
+                return result;
+
             var inputLines = GetInputLines();
             var startInfo = new ProcessStartInfo
             {
                 FileName = commandName,
-                Arguments = Utility.Escape( args ).Join( " " ),
+                Arguments = ShellUtility.Escape( args ).Join( " " ),
                 UseShellExecute = false,
                 RedirectStandardInput = inputLines.Count > 0,
                 RedirectStandardError = captureOutput,

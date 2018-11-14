@@ -13,7 +13,7 @@ namespace Lumi.Shell.Segments
 
         public TextSegment( string value ) => this.Value = value;
 
-        public override string ToString() => Utility.Escape( this.Value );
+        public override string ToString() => ShellUtility.Escape( this.Value );
 
         [JsonProperty]
         [JsonConverter( typeof( StringEnumConverter ) )]

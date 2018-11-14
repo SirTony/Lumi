@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Lumi.Core;
+using Lumi.Parsing;
 using Lumi.Shell;
 using Lumi.Shell.Parsing;
+using Lumi.Shell.Segments;
+using Newtonsoft.Json;
 using Args = PowerArgs.Args;
 using Console = Colorful.Console;
-
-// To silence the catch clauses that use when( !IsDebug )
-#pragma warning disable CS8359 // Filter expression is a constant 'false'
-#pragma warning disable CS7095 // Filter expression is a constant 'true'
 
 namespace Lumi
 {
@@ -56,11 +55,23 @@ namespace Lumi
                     ColorizationOpaqueBlend;
     }
 
-    internal static class Program
+    // ReSharper disable once ClassNeverInstantiated.Global
+    [SuppressMessage(
+        "ReSharper",
+        "UnusedAutoPropertyAccessor.Local",
+        Justification = "Private setters are needed by PowerArgs"
+    )]
+    internal sealed class Program
     {
         private const string DefaultTitle = "Lumi";
 
-        public static AppConfig Config { get; private set; }
+        public static AppConfig Config { get; }
+
+        [CustomHelpHook]
+        [PowerArgs.ArgShortcut( "?" )]
+        [PowerArgs.ArgShortcut( "h" )]
+        [PowerArgs.ArgDescription( "Show this help screen." )]
+        public bool Help { get; private set; }
 
         static Program()
             => Program.Config = AppConfig.Load();
@@ -95,30 +106,68 @@ namespace Lumi
             Program.Config.ColorScheme.Apply();
             Console.Clear();
 
-            var parsed = Args.Parse<CommandLineArguments>( args );
-            if( parsed == null )
-                return;
-
-            Program.Run( parsed );
-        }
-
-        private static void Run( CommandLineArguments args )
-        {
-            if( !String.IsNullOrWhiteSpace( args.EvaluateCommand ) )
+            try
             {
-                Program.ExecuteCommand( args.EvaluateCommand, args );
-                return;
+                Shell.Commands.LoadCommandsFrom( typeof( Program ).Assembly );
+                Shell.Commands.LoadCommands();
+            }
+            catch( Exception ex ) when( !Debugger.IsAttached )
+            {
+                ConsoleEx.WriteError( "Unable to load commands" );
+                ConsoleEx.WriteError( ex.Message );
             }
 
+            Args.InvokeAction<Program>( args );
+        }
+
+        [PowerArgs.ArgDescription( "Tokenize command line and print the token stream in JSON format" )]
+        [PowerArgs.ArgActionMethod]
+        public void PrintTokens(
+            [PowerArgs.ArgRequired] [PowerArgs.ArgDescription( "Command line text to tokenize" )]
+            string command
+        )
+        {
+            Program.ParseCommandLine( command, out var tokens );
+            if( tokens is null ) return;
+            Console.WriteLine( JsonConvert.SerializeObject( tokens, Formatting.Indented ) );
+        }
+
+        [PowerArgs.ArgDescription( "Parse command line and print the parse tree in JSON format" )]
+        [PowerArgs.ArgActionMethod]
+        public void PrintTree(
+            [PowerArgs.ArgRequired] [PowerArgs.ArgDescription( "Command line text to parse" )]
+            string command
+        )
+        {
+            var segment = Program.ParseCommandLine( command, out var _ );
+            if( segment is null ) return;
+            Console.WriteLine( JsonConvert.SerializeObject( segment, Formatting.Indented ) );
+        }
+
+        [PowerArgs.ArgDescription( "Execute a command then exit" )]
+        [PowerArgs.ArgActionMethod]
+        public void Exec(
+            [PowerArgs.ArgDescription( "Command to execute" )]
+            string command
+        )
+        {
+            if( String.IsNullOrWhiteSpace( command ) )
+                this.Main();
+            else
+                Program.ExecuteCommand( command );
+        }
+
+        private void Main()
+        {
             while( true )
             {
                 Program.WritePrompt();
-                Program.ExecuteCommand( Console.ReadLine(), args );
+                Program.ExecuteCommand( Console.ReadLine() );
                 Console.WriteLine();
             }
         }
 
-        private static void ExecuteCommand( string input, CommandLineArguments args )
+        private static void ExecuteCommand( string input )
         {
             if( String.IsNullOrWhiteSpace( input ) )
                 return;
@@ -126,9 +175,9 @@ namespace Lumi
             try
             {
                 Console.Title = $"Lumi - [{input}]";
-                var lexer = new ShellLexer( input );
-                var parser = new ShellParser( lexer.Tokenize() );
-                var segment = parser.ParseAll();
+                var segment = Program.ParseCommandLine( input, out var _ );
+
+                if( segment is null ) return;
 
                 var result = segment.Execute( Program.Config, captureOutput: true );
                 Environment.ExitCode = result.ExitCode;
@@ -149,6 +198,38 @@ namespace Lumi
                         Console.WriteLine( result.Value.ToString() );
                         break;
                 }
+            }
+            catch( ProgramNotFoundException ex ) when( !Debugger.IsAttached )
+            {
+                ConsoleEx.WriteError( $"'{ex.ProgramName}' is not a known command or executable file" );
+            }
+            catch( Exception ex ) when( !Debugger.IsAttached )
+            {
+                Console.WriteLine( ex );
+            }
+            finally { Console.Title = Program.DefaultTitle; }
+        }
+
+        private static void WritePrompt()
+        {
+            var scheme = Program.Config.ColorScheme;
+
+            Console.Write( "$ " );
+            Console.Write( Environment.UserName, scheme.PromptUserNameColor );
+            Console.Write( "@" );
+            Console.Write( ShellUtility.GetCurrentDirectory(), scheme.PromptDirectoryColor );
+            Console.Write( "> " );
+        }
+
+        private static IShellSegment ParseCommandLine(
+            string input, out IEnumerable<SyntaxToken<ShellTokenKind>> tokens
+        )
+        {
+            try
+            {
+                var lexer = new ShellLexer( input );
+                var parser = new ShellParser( tokens = lexer.Tokenize() );
+                return parser.ParseAll();
             }
             catch( ShellSyntaxException ex ) when( !Debugger.IsAttached )
             {
@@ -177,47 +258,9 @@ namespace Lumi
                 Console.WriteLine( $"{whitespace}^", Program.Config.ColorScheme.ErrorColor );
                 Console.WriteLine( $"{line}┘", Program.Config.ColorScheme.ErrorColor );
             }
-            catch( ProgramNotFoundException ex ) when( !Debugger.IsAttached )
-            {
-                ConsoleEx.WriteError( $"'{ex.ProgramName}' is not a known command or executable file" );
-            }
-            catch( Exception ex ) when( !Debugger.IsAttached )
-            {
-                Console.WriteLine( ex );
-            }
-            finally
-            {
-                if( String.IsNullOrWhiteSpace( args.EvaluateCommand ) )
-                    Console.Title = Program.DefaultTitle;
-            }
-        }
 
-        private static void WritePrompt()
-        {
-            var scheme = Program.Config.ColorScheme;
-
-            Console.Write( "$ " );
-            Console.Write( Environment.UserName, scheme.PromptUserNameColor );
-            Console.Write( "@" );
-            Console.Write( Program.GetCurrentDirectory(), scheme.PromptDirectoryColor );
-            Console.Write( "> " );
-        }
-
-        public static void ReloadConfig()
-        {
-            Program.Config = AppConfig.Load();
-            Program.Config.ColorScheme.Apply();
-            Console.Clear();
-        }
-
-        public static string GetCurrentDirectory()
-        {
-            var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ).ToLowerInvariant();
-            var current = ShellUtil.GetProperDirectoryCapitalization( Directory.GetCurrentDirectory() );
-
-            return current.ToLowerInvariant().StartsWith( home ) && Program.Config.UseTilde
-                       ? $"~{current.Substring( home.Length )}"
-                       : current;
+            tokens = null;
+            return null;
         }
     }
 }

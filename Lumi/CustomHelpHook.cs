@@ -3,14 +3,21 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Lumi.Commands;
 using Lumi.Core;
+using Lumi.Shell;
 using PowerArgs;
 
 namespace Lumi
 {
-    internal class CustomHelpHook : ArgHook
+    /* TODO: this hook doesn't print help text for a specific action
+     *       so 'lumi exec -h' will still just print the full help screen for 'lumi -h'
+     *       and ignore the exec action's options.
+    */
+
+    public class CustomHelpHook : ArgHook
     {
+        private const string DescriptionSeparator = " :: ";
+
         public Version Version { get; }
 
         public CustomHelpHook()
@@ -32,6 +39,7 @@ namespace Lumi
             this.BuildBanner( sb, context );
             CustomHelpHook.BuildUsageLine( sb, context );
             CustomHelpHook.BuildArgumentsList( sb, context );
+            if( context.Definition.HasActions ) CustomHelpHook.BuildActionUsage( sb, context );
 
             Console.Error.WriteLine( sb.ToString() );
         }
@@ -101,12 +109,10 @@ namespace Lumi
 
         private static void BuildArgumentsList( StringBuilder sb, HookContext context )
         {
-            const string DescriptionSeparator = " :: ";
-
             if( !context.Definition.HasGlobalUsageArguments )
                 return;
 
-            sb.AppendLine( $"  {( context.Definition.HasActions ? "Global " : String.Empty )}Arguments" );
+            sb.AppendLine( $"  {( context.Definition.HasActions ? "Global " : String.Empty )}Arguments" ).AppendLine();
 
             var longestName = context.Definition
                                      .Arguments
@@ -127,9 +133,9 @@ namespace Lumi
 
                 if( !String.IsNullOrWhiteSpace( arg.Description ) )
                 {
-                    var desc = WordWrap(
+                    var desc = CustomHelpHook.WordWrap(
                         $"[{arg.ArgumentType.Name}{( arg.IsRequired ? ", Required" : String.Empty )}] {arg.Description}",
-                        temp.Length + DescriptionSeparator.Length + 4
+                        temp.Length + CustomHelpHook.DescriptionSeparator.Length + 4
                     );
 
                     temp.Append( desc );
@@ -137,19 +143,48 @@ namespace Lumi
 
                 sb.AppendLine( temp.ToString() );
             }
+        }
 
-            string WordWrap( string text, int startIndex )
+        private static void BuildActionUsage( StringBuilder sb, HookContext context )
+        {
+            sb.AppendLine().AppendLine( "  Global Actions" ).AppendLine();
+
+            var longestName = context.Definition
+                                     .Actions
+                                     .Where( x => x.DefaultAlias != null )
+                                     .Max( a => a.DefaultAlias.Length );
+
+            foreach( var action in context.Definition.Actions )
             {
-                var width = Console.BufferWidth - startIndex;
-                if( text.Length < width )
-                    return $"{DescriptionSeparator}{text}";
+                var temp = new StringBuilder()
+                          .Append( "    " )
+                          .AppendFormat( $"{{0,-{longestName + 1}}}", action.DefaultAlias );
 
-                var lines = text.InChunksOf( width ).Select( x => x.Trim() ).ToArray();
-                var indent = new string( ' ', startIndex - 4 );
+                if( !String.IsNullOrWhiteSpace( action.Description ) )
+                {
+                    var desc = CustomHelpHook.WordWrap(
+                        action.Description,
+                        temp.Length + CustomHelpHook.DescriptionSeparator.Length + 1
+                    );
 
-                return $"{DescriptionSeparator}{lines.First()}{Environment.NewLine}"
-                     + $"{lines.Skip( 1 ).Select( x => $"{indent}{x}" ).Join( Environment.NewLine )}";
+                    temp.Append( desc );
+                }
+
+                sb.AppendLine( temp.ToString() );
             }
+        }
+
+        private static string WordWrap( string text, int startIndex )
+        {
+            var width = Console.BufferWidth - startIndex;
+            if( text.Length < width )
+                return $"{CustomHelpHook.DescriptionSeparator}{text}";
+
+            var lines = text.InChunksOf( width ).Select( x => x.Trim() ).ToArray();
+            var indent = new string( ' ', startIndex - 4 );
+
+            return $"{CustomHelpHook.DescriptionSeparator}{lines.First()}{Environment.NewLine}"
+                 + $"{lines.Skip( 1 ).Select( x => $"{indent}{x}" ).Join( Environment.NewLine )}";
         }
 
         public override void AfterPopulateProperty( HookContext context )

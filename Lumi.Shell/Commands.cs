@@ -1,40 +1,70 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using EnsureThat;
+using Lumi.Core;
+using PowerArgs;
 
 namespace Lumi.Shell
 {
     public static class Commands
     {
-        private static readonly IDictionary<string, ICommand> CommandTable;
+        private static readonly IDictionary<string, Type> CommandTable;
 
-        static Commands() => Commands.CommandTable = new Dictionary<string, ICommand>();
+        static Commands() => Commands.CommandTable = new Dictionary<string, Type>();
 
-        public static bool TryGetCommandByName( string name, out ICommand command )
-            => Commands.CommandTable.TryGetValue( name, out command );
+        public static bool TryGetCommandByName( string name, out Type type )
+            => Commands.CommandTable.TryGetValue( name, out type );
 
-        public static ICommand GetCommandByName( string name )
-            => Commands.CommandTable[name];
-
-        public static bool TryExecuteCommandByName( string name, object input, out ShellResult result )
+        public static bool TryExecuteCommandByName(
+            string name, AppConfig config, string[] args, object input, out ShellResult result
+        )
         {
-            if( !Commands.TryGetCommandByName( name, out var command ) )
-            {
-                result = ShellResult.Error( -1, new ProgramNotFoundException( name, null ) );
-                return false;
-            }
+            if( !Commands.TryGetCommandByName( name, out var commandType ) )
+                throw new ProgramNotFoundException( name, null );
 
-            result = command.Execute( input );
+            result = ( (ICommand) Args.Parse( commandType, args ) ).Execute( config, input );
             return true;
         }
 
-        public static ShellResult ExecuteCommandByName( string name, object input = null )
-            => Commands.GetCommandByName( name ).Execute( input );
-
-        public static void AddCommand( string name, ICommand command )
+        private static void AddCommand( string name, Type type )
         {
             Ensure.That( name, nameof( name ) ).IsNotNullOrWhiteSpace();
-            Ensure.That( command, nameof( command ) ).IsNotNull();
-            Commands.CommandTable.Add( name, command );
+            Ensure.That( type, nameof( type ) ).IsNotNull();
+
+            Commands.CommandTable.Add( name, type );
+        }
+
+        public static void LoadCommandsFrom( Assembly assembly )
+        {
+            var commands = assembly.GetTypes().Where( t => typeof( ICommand ).IsAssignableFrom( t ) );
+
+            foreach( var cmd in commands )
+            {
+                var tempInstance = (ICommand) Activator.CreateInstance( cmd, true );
+                Commands.AddCommand( tempInstance.Name, cmd );
+
+                IEnumerableExtensions.ForEach(
+                    cmd.GetCustomAttributes<CommandAliasAttribute>()
+                       .Select( a => a.Alias ),
+                    a => Commands.AddCommand( a, cmd )
+                );
+            }
+        }
+
+        public static void LoadCommands()
+        {
+            var path = Path.Combine( AppConfig.SourceDirectory, "ext" );
+            if( !Directory.Exists( path ) ) return;
+
+            var dir = new DirectoryInfo( path );
+            IEnumerableExtensions.ForEach(
+                dir.EnumerateFiles( "*.dll", SearchOption.AllDirectories )
+                   .Select( f => Assembly.LoadFile( f.FullName ) ),
+                Commands.LoadCommandsFrom
+            );
         }
     }
 }

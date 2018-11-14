@@ -1,11 +1,26 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Lumi.Shell.Parsing;
 
-namespace Lumi
+namespace Lumi.Shell
 {
-    public static class ShellUtil
+    public static class ShellUtility
     {
+        public static string Escape( string segment )
+        {
+            if( segment.Any( c => c == '"' ) )
+                segment = segment.Replace( "\"", "\\\"" );
+
+            return segment.Any( c => Char.IsWhiteSpace( c ) || ShellLexer.IsSpecialChar( c ) )
+                       ? $"\"{segment}\""
+                       : segment;
+        }
+
+        public static IEnumerable<string> Escape( IEnumerable<string> parts )
+            => parts.Select( ShellUtility.Escape );
+
         public static string GetProperDirectoryCapitalization( string dir )
         {
             try
@@ -19,7 +34,7 @@ namespace Lumi
                 return parentDirInfo is null
                            ? dirInfo.Name
                            : Path.Combine(
-                               ShellUtil.GetProperDirectoryCapitalization( parentDirInfo.FullName ),
+                               ShellUtility.GetProperDirectoryCapitalization( parentDirInfo.FullName ),
                                parentDirInfo.GetDirectories( dirInfo.Name )[0].Name
                            );
             }
@@ -42,7 +57,7 @@ namespace Lumi
                 return dirInfo is null
                            ? fileInfo.FullName
                            : Path.Combine(
-                               ShellUtil.GetProperDirectoryCapitalization( dirInfo.FullName ),
+                               ShellUtility.GetProperDirectoryCapitalization( dirInfo.FullName ),
                                dirInfo.GetFiles( fileInfo.Name )[0].Name
                            );
             }
@@ -54,8 +69,8 @@ namespace Lumi
 
         public static string ProcessTilde( string path )
         {
-            if( !path.StartsWith( "~" ) || !Program.Config.UseTilde )
-                return ShellUtil.GetProperDirectoryCapitalization( path );
+            if( !path.StartsWith( "~" ) )
+                return ShellUtility.GetProperDirectoryCapitalization( path );
 
             var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile );
             var withoutTilde = path.Substring( 1 )
@@ -67,7 +82,17 @@ namespace Lumi
                                     );
 
             var newPath = Path.Combine( withoutTilde.Prepend( home ).ToArray() );
-            return ShellUtil.GetProperDirectoryCapitalization( newPath );
+            return ShellUtility.GetProperDirectoryCapitalization( newPath );
+        }
+
+        public static string GetCurrentDirectory()
+        {
+            var home = Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ).ToLowerInvariant();
+            var current = ShellUtility.GetProperDirectoryCapitalization( Directory.GetCurrentDirectory() );
+
+            return current.ToLowerInvariant().StartsWith( home )
+                       ? $"~{current.Substring( home.Length )}"
+                       : current;
         }
     }
 }

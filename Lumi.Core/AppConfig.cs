@@ -27,9 +27,6 @@ namespace Lumi.Core
         [JsonProperty( Required = Required.Always )]
         public ColorScheme ColorScheme { get; private set; }
 
-        [JsonProperty( Required = Required.Always )]
-        public bool UseTilde { get; private set; }
-
         [JsonProperty( Required = Required.Default )]
         public string DefaultVariableScope { get; private set; }
 
@@ -80,7 +77,6 @@ namespace Lumi.Core
             var @default = new AppConfig
             {
                 ColorScheme = new ColorScheme(),
-                UseTilde = true,
                 Persistent = new Dictionary<string, object>( StringComparer.OrdinalIgnoreCase ),
                 Temporary = new Dictionary<string, object>( StringComparer.OrdinalIgnoreCase ),
                 DefaultVariableScope = null,

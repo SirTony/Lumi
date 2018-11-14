@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Lumi.Core;
 using Lumi.Shell;
 using PowerArgs;
 
@@ -20,13 +20,12 @@ namespace Lumi.Commands
         public bool Help { get; private set; }
 
         [ArgPosition( 0 )]
-        [ArgDefaultValue( 0 )]
-        public int ExitCode { get; private set; }
+        public int ExitCode { get; } = 0;
 
         [ArgIgnore]
         public string Name { get; } = "exit";
 
-        public ShellResult Execute( IReadOnlyList<string> input )
+        public ShellResult Execute( AppConfig config, object input )
         {
             Environment.Exit( this.ExitCode );
             return default;

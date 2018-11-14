@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
+using Lumi.Core;
 using Lumi.Shell;
 using PowerArgs;
 
@@ -21,7 +21,7 @@ namespace Lumi.Commands
         [ArgIgnore]
         public string Name { get; } = "pwd";
 
-        public ShellResult Execute( IReadOnlyList<string> input )
-            => ShellResult.Ok( Program.GetCurrentDirectory() );
+        public ShellResult Execute( AppConfig config, object input )
+            => ShellResult.Ok( ShellUtility.GetCurrentDirectory() );
     }
 }

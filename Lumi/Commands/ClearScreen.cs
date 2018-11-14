@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Lumi.Core;
 using Lumi.Shell;
 using PowerArgs;
 
@@ -11,7 +11,7 @@ namespace Lumi.Commands
         "UnusedAutoPropertyAccessor.Local",
         Justification = "Private setters are needed by PowerArgs"
     )]
-    [Alias( "cls" )]
+    [CommandAlias( "cls" )]
     internal sealed class ClearScreen : ICommand
     {
         [CustomHelpHook]
@@ -23,7 +23,7 @@ namespace Lumi.Commands
         [ArgIgnore]
         public string Name { get; } = "clear";
 
-        public ShellResult Execute( IReadOnlyList<string> input )
+        public ShellResult Execute( AppConfig config, object input )
         {
             Console.Clear();
             return ShellResult.Ok();

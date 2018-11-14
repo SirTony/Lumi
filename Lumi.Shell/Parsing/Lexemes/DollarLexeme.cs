@@ -16,15 +16,18 @@ namespace Lumi.Shell.Parsing.Lexemes
                 return new CommandInterpolationSegment( segment );
             }
 
-            var varSegment = parser.Parse<TextSegment>();
+            var varToken = parser.Take( ShellTokenKind.String );
+            if( varToken.Text is null )
+                throw new ShellSyntaxException( "Variable name cannot be a string interpolation", varToken.Span );
 
-            if( !varSegment.Value.Contains( ":" ) )
-                return new VariableSegment( null, varSegment.Value );
+            var varName = varToken.Text;
+            if( !varName.Contains( ":" ) )
+                return new VariableSegment( null, varName );
 
-            var scopeEnd = varSegment.Value.IndexOf( ':' );
+            var scopeEnd = varName.IndexOf( ':' );
 
-            var scope = varSegment.Value.Substring( 0, scopeEnd );
-            var name = varSegment.Value.Substring( scopeEnd + 1 );
+            var scope = varName.Substring( 0, scopeEnd );
+            var name = varName.Substring( scopeEnd + 1 );
 
             return new VariableSegment( scope, name );
         }

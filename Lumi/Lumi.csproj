@@ -49,20 +49,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CommandLineArguments.cs" />
-    <Compile Include="Commands\AliasAttribute.cs" />
     <Compile Include="Commands\ChangeDirectory.cs" />
     <Compile Include="Commands\ClearScreen.cs" />
     <Compile Include="Commands\Echo.cs" />
     <Compile Include="Commands\Exit.cs" />
-    <Compile Include="Commands\ICommand.cs" />
     <Compile Include="Commands\PrintWorkingDirectory.cs" />
-    <Compile Include="Commands\ReloadConfig.cs" />
-    <Compile Include="Commands\ResetConfig.cs" />
-    <Compile Include="Commands\Split.cs" />
     <Compile Include="ConsoleEx.cs" />
     <Compile Include="CustomHelpHook.cs" />
-    <Compile Include="ShellUtil.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -99,5 +92,6 @@
       <Name>Lumi.Shell</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
