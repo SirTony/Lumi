@@ -19,37 +19,6 @@ namespace Lumi.Commands
     )]
     public sealed class Theme : ICommand
     {
-        [StructLayout( LayoutKind.Sequential )]
-        private struct DWMCOLORIZATIONCOLORS
-        {
-            public uint ColorizationColor;
-            public uint ColorizationAfterglow;
-            public uint ColorizationColorBalance;
-            public uint ColorizationAfterglowBalance;
-            public uint ColorizationBlurBalance;
-            public uint ColorizationGlassReflectionIntensity;
-            public uint ColorizationOpaqueBlend;
-        }
-
-        private static Color SystemWindowColor
-        {
-            get
-            {
-                var colors = new DWMCOLORIZATIONCOLORS();
-                Theme.DwmGetColorizationParameters( ref colors );
-
-                return Color.FromArgb(
-                    255,
-                    (byte)( colors.ColorizationColor >> 16 ),
-                    (byte)( colors.ColorizationColor >> 8 ),
-                    (byte)colors.ColorizationColor
-                );
-            }
-        }
-
-        [DllImport( "dwmapi.dll", EntryPoint = "#127" )]
-        private static extern void DwmGetColorizationParameters( ref DWMCOLORIZATIONCOLORS colors );
-
         private delegate void ApplyThemeDelegate( AppConfig config );
         
         private static readonly IReadOnlyDictionary<string, ApplyThemeDelegate> BuiltInThemes;
@@ -80,17 +49,32 @@ namespace Lumi.Commands
 
         [ArgIgnore]
         public string Name { get; } = "theme";
-
-        // TODO: need to implement user-defined themes that can be saved and loaded to/from a JSON file
+        
         public ShellResult Execute( AppConfig config, object input )
         {
-            if( Theme.BuiltInThemes.TryGetValue( this.ThemeName, out var applicator ) )
-            {
-                applicator( config );
-                config.Save();
-                return ShellResult.Ok();
-            }
+            ConsoleEx.WriteWarning(
+                "Due to a limitation within Windows, the console is limited to 16 distinct colours. "
+              + "If any of the new colours from the selected theme fail to show or colours are "
+              + "repeated/incorrect, you have exceeded the 16 colour limit. "
+              + "Simply restart the application to fix it."
+            );
 
+            if( !Prompt.YesNo( "Continue?", true ) ) return ShellResult.Ok();
+
+            if( Theme.BuiltInThemes.TryGetValue( this.ThemeName, out var applicator ) )
+                applicator( config );
+            else
+            {
+                var manager = ThemeManager.Load();
+                if( !manager.Themes.TryGetValue( this.ThemeName, out var theme ) )
+                    throw new KeyNotFoundException( $"Unknown theme '{this.ThemeName}'" );
+
+                config.ColorScheme = theme;
+                config.ColorScheme.Apply();
+            }
+            
+            Console.Clear();
+            config.Save();
             return ShellResult.Ok();
         }
 
@@ -106,7 +90,7 @@ namespace Lumi.Commands
 
             config.PromptStyle = PromptStyle.Windows;
 
-            var wndColor = Theme.SystemWindowColor;
+            var wndColor = ThemeManager.SystemWindowColor;
             var useLightColours = wndColor.CalculateContrastRatio( Color.WhiteSmoke ) <= 0.6;
             var foreground = useLightColours ? Color.WhiteSmoke : Color.Black;
 
@@ -116,7 +100,7 @@ namespace Lumi.Commands
                 Foreground = foreground,
                 NoticeColor = useLightColours ? Color.Aqua : Color.DarkCyan,
                 WarningColor = useLightColours ? Color.Gold : Color.DarkGoldenrod,
-                ErrorColor = useLightColours ? Color : Color.Firebrick,
+                ErrorColor = useLightColours ? Color.Red : Color.Firebrick,
                 PromptUserNameColor = foreground,
                 PromptDirectoryColor = foreground
             };

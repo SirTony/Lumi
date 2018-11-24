@@ -31,6 +31,16 @@ namespace Lumi.Core
         [JsonProperty( nameof( ColorScheme.WarningColor ) )]
         private Color? _warningColor;
 
+        [JsonProperty( nameof( ColorScheme.PromptMachineNameColor ) )]
+        private Color? _machineColor;
+
+        [JsonIgnore]
+        public Color PromptMachineNameColor
+        {
+            get => this._machineColor ?? this.Foreground;
+            set => this._machineColor = value;
+        }
+
         [JsonIgnore]
         public Color Foreground
         {
@@ -89,6 +99,7 @@ namespace Lumi.Core
             this._noticeColor = Color.FromArgb( 29, 136, 241 );
             this._promptUserNameColor = Color.FromArgb( 80, 177, 255 );
             this._promptDirectoryColor = Color.FromArgb( 248, 176, 104 );
+            this._machineColor = Color.FromArgb( 255, 0, 255 );
         }
 
         public void Apply()

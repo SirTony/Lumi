@@ -133,12 +133,12 @@ namespace Lumi
 
                 if( !String.IsNullOrWhiteSpace( arg.Description ) )
                 {
-                    var desc = CustomHelpHook.WordWrap(
+                    var desc = ShellUtility.WordWrap(
                         $"[{arg.ArgumentType.Name}{( arg.IsRequired ? ", Required" : String.Empty )}] {arg.Description}",
                         temp.Length + CustomHelpHook.DescriptionSeparator.Length + 4
                     );
 
-                    temp.Append( desc );
+                    temp.Append( $"{CustomHelpHook.DescriptionSeparator}{desc}" );
                 }
 
                 sb.AppendLine( temp.ToString() );
@@ -162,29 +162,16 @@ namespace Lumi
 
                 if( !String.IsNullOrWhiteSpace( action.Description ) )
                 {
-                    var desc = CustomHelpHook.WordWrap(
+                    var desc = ShellUtility.WordWrap(
                         action.Description,
                         temp.Length + CustomHelpHook.DescriptionSeparator.Length + 1
                     );
 
-                    temp.Append( desc );
+                    temp.Append( $"{CustomHelpHook.DescriptionSeparator}{desc}" );
                 }
 
                 sb.AppendLine( temp.ToString() );
             }
-        }
-
-        private static string WordWrap( string text, int startIndex )
-        {
-            var width = Console.BufferWidth - startIndex;
-            if( text.Length < width )
-                return $"{CustomHelpHook.DescriptionSeparator}{text}";
-
-            var lines = text.InChunksOf( width ).Select( x => x.Trim() ).ToArray();
-            var indent = new string( ' ', startIndex - 4 );
-
-            return $"{CustomHelpHook.DescriptionSeparator}{lines.First()}{Environment.NewLine}"
-                 + $"{lines.Skip( 1 ).Select( x => $"{indent}{x}" ).Join( Environment.NewLine )}";
         }
 
         public override void AfterPopulateProperty( HookContext context )

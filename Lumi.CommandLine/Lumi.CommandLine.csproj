@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{FB270BF0-FF05-4549-942F-06D9D04A7B4A}</ProjectGuid>
+    <ProjectGuid>{A8E4EB47-2A2C-408E-AA4B-5940C076E6C2}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Lumi.Core</RootNamespace>
-    <AssemblyName>Lumi.Core</AssemblyName>
+    <RootNamespace>Lumi.CommandLine</RootNamespace>
+    <AssemblyName>Lumi.CommandLine</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -17,23 +17,24 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\Bin\Debug\</OutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <LangVersion>7.1</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\Bin\Release\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <LangVersion>7.1</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -42,40 +43,48 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AppConfig.cs" />
-    <Compile Include="Extensions\AssemblyExtensions.cs" />
-    <Compile Include="Extensions\ColorExtensions.cs" />
-    <Compile Include="Converters\BasicConverter.cs" />
-    <Compile Include="ColorScheme.cs" />
-    <Compile Include="Converters\ColorConverter.cs" />
-    <Compile Include="Extensions\EnumerableExtensions.cs" />
-    <Compile Include="Extensions\MemberInfoExtensions.cs" />
-    <Compile Include="Extensions\ParameterInfoExtensions.cs" />
-    <Compile Include="ITypeConverter.cs" />
-    <Compile Include="Prompt.cs" />
+    <Compile Include="AliasAttribute.cs" />
+    <Compile Include="CommandAttribute.cs" />
+    <Compile Include="CommandLineException.cs" />
+    <Compile Include="CommandLineOption.cs" />
+    <Compile Include="CommandLineParser.cs" />
+    <Compile Include="DescriptionAttribute.cs" />
+    <Compile Include="IValueParser.cs" />
+    <Compile Include="LongNamedOption.cs" />
+    <Compile Include="Models\ArgumentModel.cs" />
+    <Compile Include="Models\CommandModel.cs" />
+    <Compile Include="Models\CommandLineModel.cs" />
+    <Compile Include="Models\CommandLineSyntax.cs" />
+    <Compile Include="Models\NamedArgumentModel.cs" />
+    <Compile Include="Models\PositionalArgumentModel.cs" />
+    <Compile Include="NamedAttribute.cs" />
+    <Compile Include="PositionalAttribute.cs" />
+    <Compile Include="PositionalOption.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ThemeManager.cs" />
-    <Compile Include="TypeConverter.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Colorful.Console">
-      <Version>1.2.9</Version>
-    </PackageReference>
-    <PackageReference Include="Ensure.That">
-      <Version>8.1.0</Version>
-    </PackageReference>
-    <PackageReference Include="Newtonsoft.Json">
-      <Version>11.0.2</Version>
-    </PackageReference>
-    <PackageReference Include="PowerArgs">
-      <Version>3.5.0</Version>
-    </PackageReference>
+    <Compile Include="PropertyWrapper.cs" />
+    <Compile Include="RequiredAttribute.cs" />
+    <Compile Include="ShortNamedOption.cs" />
+    <Compile Include="UsageAttribute.cs" />
+    <Compile Include="ValueParserAttribute.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DotNetExtender\DotNetExtender\DotNetExtender.csproj">
       <Project>{cc88b653-02c5-4399-9bdf-b8fa936dc4f9}</Project>
       <Name>DotNetExtender</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Lumi.Core\Lumi.Core.csproj">
+      <Project>{fb270bf0-ff05-4549-942f-06d9d04a7b4a}</Project>
+      <Name>Lumi.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Lumi.Shell\Lumi.Shell.csproj">
+      <Project>{0541f63d-b2b2-49bc-a652-4c9b848e2f83}</Project>
+      <Name>Lumi.Shell</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Ensure.That">
+      <Version>8.1.0</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

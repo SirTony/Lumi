@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Lumi.Core
 {
-    internal static class Prompt
+    public static class Prompt
     {
         private static readonly Regex YesNoRegex;
 

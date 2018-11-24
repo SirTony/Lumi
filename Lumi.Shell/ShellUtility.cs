@@ -94,5 +94,18 @@ namespace Lumi.Shell
                        ? $"~{current.Substring( home.Length )}"
                        : current;
         }
+
+        public static string WordWrap( string text, int startIndex )
+        {
+            var width = Console.BufferWidth - startIndex - 1;
+            if( text.Length < width )
+                return text;
+
+            var lines = text.InChunksOf( width ).Select( x => x.Trim() ).ToArray();
+            var indent = new string( ' ', startIndex );
+
+            return $"{lines.First()}{Environment.NewLine}"
+                 + $"{lines.Skip( 1 ).Select( x => $"{indent}{x}" ).Join( Environment.NewLine )}";
+        }
     }
 }
