@@ -2,7 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Lumi.Core;
 using Lumi.Shell;
-using PowerArgs;
 
 namespace Lumi.Commands
 {
@@ -14,13 +13,6 @@ namespace Lumi.Commands
     [CommandAlias( "cls" )]
     internal sealed class ClearScreen : ICommand
     {
-        [CustomHelpHook]
-        [ArgShortcut( "?" )]
-        [ArgShortcut( "h" )]
-        [ArgDescription( "Show this help screen." )]
-        public bool Help { get; private set; }
-
-        [ArgIgnore]
         public string Name { get; } = "clear";
 
         public ShellResult Execute( AppConfig config, object input )

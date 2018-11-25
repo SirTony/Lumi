@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using Lumi.CommandLine;
 using Lumi.Core;
 using Lumi.Parsing;
 using Lumi.Shell;
 using Lumi.Shell.Parsing;
 using Lumi.Shell.Segments;
 using Newtonsoft.Json;
-using Args = PowerArgs.Args;
 using Console = Colorful.Console;
 
 namespace Lumi
@@ -26,16 +26,10 @@ namespace Lumi
 
         public static AppConfig Config { get; }
 
-        [CustomHelpHook]
-        [PowerArgs.ArgShortcut( "?" )]
-        [PowerArgs.ArgShortcut( "h" )]
-        [PowerArgs.ArgDescription( "Show this help screen." )]
-        public bool Help { get; private set; }
-
         static Program()
             => Program.Config = AppConfig.Load();
 
-        private static void Main( string[] args )
+        private static int Main( string[] args )
         {
             Console.CancelKeyPress += ( s, e ) => {
                 e.Cancel = true;
@@ -56,24 +50,24 @@ namespace Lumi
                 ConsoleEx.WriteError( ex.Message );
             }
 
-            // dumb hack because PowerArgs is throwing an exception
-            // if the program is run without an action specified on the command line.
-            // but we don't want that, so we're silencing this exception.
-            // there has got to be a correct way to do this.
             try
             {
-                Args.InvokeAction<Program>( args );
+                var ( code, _ ) = CommandLineParser.ParseArguments<Program>( args );
+                Environment.ExitCode = code;
             }
-            catch
+            catch( HelpRequestedException ) { }
+            catch( Exception ex ) when( !Debugger.IsAttached )
             {
-                Program.Run();
+                ConsoleEx.WriteError( ex.Message );
             }
+
+            return Environment.ExitCode;
         }
 
-        [PowerArgs.ArgDescription( "Tokenize command line and print the token stream in JSON format" )]
-        [PowerArgs.ArgActionMethod]
+        [Description( "Tokenize command line and print the token stream in JSON format" )]
+        [Command( "print-tokens" )]
         public void PrintTokens(
-            [PowerArgs.ArgRequired] [PowerArgs.ArgDescription( "Command line text to tokenize" )]
+            [Required] [Description( "Command line text to tokenize" )] [Positional( 0 )]
             string command
         )
         {
@@ -82,10 +76,10 @@ namespace Lumi
             Console.WriteLine( JsonConvert.SerializeObject( tokens, Formatting.Indented ) );
         }
 
-        [PowerArgs.ArgDescription( "Parse command line and print the parse tree in JSON format" )]
-        [PowerArgs.ArgActionMethod]
+        [Description( "Parse command line and print the parse tree in JSON format" )]
+        [Command( "print-tree" )]
         public void PrintTree(
-            [PowerArgs.ArgRequired] [PowerArgs.ArgDescription( "Command line text to parse" )]
+            [Required] [Description( "Command line text to parse" )] [Positional( 0 )]
             string command
         )
         {
@@ -94,20 +88,14 @@ namespace Lumi
             Console.WriteLine( JsonConvert.SerializeObject( segment, Formatting.Indented ) );
         }
 
-        [PowerArgs.ArgDescription( "Execute a command then exit" )]
-        [PowerArgs.ArgActionMethod]
+        [Description( "Execute a command then exit" )]
+        [Command( "exec" )]
         public void Exec(
-            [PowerArgs.ArgDescription( "Command to execute" )]
+            [Required] [Description( "Command to execute" )] [Positional( 0 )]
             string command
-        )
-        {
-            if( String.IsNullOrWhiteSpace( command ) )
-                Program.Run();
-            else
-                Program.ExecuteCommand( command );
-        }
+        ) => Program.ExecuteCommand( command );
 
-        private static void Run()
+        private void Main()
         {
             while( true )
             {

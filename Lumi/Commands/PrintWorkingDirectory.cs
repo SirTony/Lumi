@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using Lumi.CommandLine;
 using Lumi.Core;
 using Lumi.Shell;
-using PowerArgs;
 
 namespace Lumi.Commands
 {
@@ -10,18 +10,17 @@ namespace Lumi.Commands
         "UnusedAutoPropertyAccessor.Local",
         Justification = "Private setters are needed by PowerArgs"
     )]
+    [Description( "Prints the current working directory" )]
+    [Usage( "pwd" )]
     internal sealed class PrintWorkingDirectory : ICommand
     {
-        [CustomHelpHook]
-        [ArgShortcut( "?" )]
-        [ArgShortcut( "h" )]
-        [ArgDescription( "Show this help screen." )]
-        public bool Help { get; private set; }
+        [Named( 'e', "expand-tilde" )]
+        [Description( "Expands the tilde to the absolute path." )]
+        public bool ExpandTilde { get; private set; }
 
-        [ArgIgnore]
         public string Name { get; } = "pwd";
 
         public ShellResult Execute( AppConfig config, object input )
-            => ShellResult.Ok( ShellUtility.GetCurrentDirectory() );
+            => ShellResult.Ok( ShellUtility.GetCurrentDirectory( this.ExpandTilde ) );
     }
 }

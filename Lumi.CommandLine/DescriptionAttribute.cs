@@ -3,7 +3,7 @@
 namespace Lumi.CommandLine
 {
     [AttributeUsage(
-        AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Method | AttributeTargets.Parameter
+        AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Method | AttributeTargets.Parameter
     )]
     public sealed class DescriptionAttribute : Attribute
     {

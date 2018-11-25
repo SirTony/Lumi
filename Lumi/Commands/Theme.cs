@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using Lumi.CommandLine;
 using Lumi.Core;
 using Lumi.Shell;
-using PowerArgs;
 
 namespace Lumi.Commands
 {
@@ -19,15 +19,8 @@ namespace Lumi.Commands
 
         private static readonly IReadOnlyDictionary<string, ApplyThemeDelegate> BuiltInThemes;
 
-        [CustomHelpHook]
-        [ArgShortcut( "?" )]
-        [ArgShortcut( "h" )]
-        [ArgDescription( "Show this help screen." )]
-        public bool Help { get; private set; }
-
-        [ArgPosition( 0 )]
-        [ArgRequired]
-        [ArgShortcut( "t" )]
+        [Positional( 0 )]
+        [Required]
         public string ThemeName { get; private set; }
 
         static Theme()
@@ -75,7 +68,6 @@ namespace Lumi.Commands
             Console.Clear();
         }
 
-        [ArgIgnore]
         public string Name { get; } = "theme";
 
         public ShellResult Execute( AppConfig config, object input )

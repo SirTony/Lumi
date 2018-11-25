@@ -8,7 +8,6 @@ using System.Text.RegularExpressions;
 using EnsureThat;
 using Lumi.CommandLine.Models;
 using Lumi.Core;
-using Lumi.Shell;
 
 namespace Lumi.CommandLine
 {
@@ -63,7 +62,9 @@ namespace Lumi.CommandLine
                         break;
                 }
 
-                if( helpRequested ) CommandLineParser.PrintHelpScreen( syntax, currentCommand );
+                if( !helpRequested ) continue;
+                CommandLineParser.PrintHelpScreen( syntax, currentCommand );
+                return 1;
             }
 
             if( commandProcessed ) return exitCode;
@@ -93,9 +94,11 @@ namespace Lumi.CommandLine
                         );
 
                         if( !success )
+                        {
                             throw new CommandLineException(
                                 $"Unexpected positional argument at position {positional.Position}"
                             );
+                        }
 
                         model.Assigner( model.Parser( positional.Value ) );
                         break;
@@ -195,6 +198,9 @@ namespace Lumi.CommandLine
             Console.Error.WriteLine( "[arguments...]" );
 
             Console.Error.WriteLine();
+            if( syntax.ApplicationType.Has<DescriptionAttribute>() )
+                Console.Error.WriteLine( syntax.ApplicationType.Get<DescriptionAttribute>().Description );
+            Console.Error.WriteLine();
 
             if( syntax.Commands.Count > 0 && currentCommand is null )
             {
@@ -218,7 +224,7 @@ namespace Lumi.CommandLine
                     if( String.IsNullOrWhiteSpace( cmd.DescriptionText ) ) continue;
 
                     Console.Error.WriteLine( "    {0}", new string( '─', cmd.Command.Length ) );
-                    Console.Error.WriteLine( "    {0}", ShellUtility.WordWrap( cmd.DescriptionText, 4 ) );
+                    Console.Error.WriteLine( "    {0}", WordWrap( cmd.DescriptionText, 4 ) );
                     Console.Error.WriteLine();
                 }
             }
@@ -230,7 +236,7 @@ namespace Lumi.CommandLine
 
             Console.Error.WriteLine();
             Console.Error.Flush();
-            Environment.Exit( 1 );
+            throw new HelpRequestedException();
 
             void PrintNamedArguments( IEnumerable<NamedArgumentModel> arguments )
             {
@@ -261,7 +267,7 @@ namespace Lumi.CommandLine
                     if( String.IsNullOrWhiteSpace( item.DescriptionText ) ) continue;
 
                     Console.Error.WriteLine( "    {0}", new string( '─', flags.Length ) );
-                    Console.Error.WriteLine( "    {0}", ShellUtility.WordWrap( item.DescriptionText, 4 ) );
+                    Console.Error.WriteLine( "    {0}", WordWrap( item.DescriptionText, 4 ) );
                     Console.Error.WriteLine();
                 }
             }
@@ -277,15 +283,15 @@ namespace Lumi.CommandLine
                 foreach( var item in arguments )
                 {
                     Console.Error.WriteLine(
-                        $"Position {{0}}{{1,{Console.BufferWidth / 2}}}",
+                        $"    Position {{0}}{{1,{Console.BufferWidth / 2}}}",
                         item.Position,
-                        $"{GetArgumentInformation( item )}"
+                        $"[{GetArgumentInformation( item )}]"
                     );
 
                     if( String.IsNullOrWhiteSpace( item.DescriptionText ) ) continue;
 
                     Console.Error.WriteLine( "    {0}", new string( '─', $"Position {item.Position}".Length ) );
-                    Console.Error.WriteLine( "    {0}", ShellUtility.WordWrap( item.DescriptionText, 4 ) );
+                    Console.Error.WriteLine( "    {0}", WordWrap( item.DescriptionText, 4 ) );
                     Console.Error.WriteLine();
                 }
             }
@@ -309,6 +315,19 @@ namespace Lumi.CommandLine
                     info.Add( $"Default: {model.DefaultValue}" );
 
                 return info.Join( ", " );
+            }
+
+            string WordWrap( string text, int startIndex )
+            {
+                var width = Console.BufferWidth - startIndex - 1;
+                if( text.Length < width )
+                    return text;
+
+                var lines = text.InChunksOf( width ).Select( x => x.Trim() ).ToArray();
+                var indent = new string( ' ', startIndex );
+
+                return $"{lines.First()}{Environment.NewLine}"
+                     + $"{lines.Skip( 1 ).Select( x => $"{indent}{x}" ).Join( Environment.NewLine )}";
             }
         }
 

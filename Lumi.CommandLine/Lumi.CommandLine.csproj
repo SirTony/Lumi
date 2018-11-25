@@ -49,6 +49,7 @@
     <Compile Include="CommandLineOption.cs" />
     <Compile Include="CommandLineParser.cs" />
     <Compile Include="DescriptionAttribute.cs" />
+    <Compile Include="HelpRequestedException.cs" />
     <Compile Include="IValueParser.cs" />
     <Compile Include="LongNamedOption.cs" />
     <Compile Include="Models\ArgumentModel.cs" />
@@ -75,10 +76,6 @@
     <ProjectReference Include="..\Lumi.Core\Lumi.Core.csproj">
       <Project>{fb270bf0-ff05-4549-942f-06d9d04a7b4a}</Project>
       <Name>Lumi.Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Lumi.Shell\Lumi.Shell.csproj">
-      <Project>{0541f63d-b2b2-49bc-a652-4c9b848e2f83}</Project>
-      <Name>Lumi.Shell</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

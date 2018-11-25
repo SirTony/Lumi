@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using Lumi.CommandLine;
 using Lumi.Core;
 using Lumi.Shell;
-using PowerArgs;
 
 namespace Lumi.Commands
 {
@@ -14,16 +14,9 @@ namespace Lumi.Commands
     )]
     internal sealed class ChangeDirectory : ICommand
     {
-        [CustomHelpHook]
-        [ArgShortcut( "?" )]
-        [ArgShortcut( "h" )]
-        [ArgDescription( "Show this help screen." )]
-        public bool Help { get; private set; }
-
-        [ArgPosition( 0 )]
+        [Positional( 0 )]
         public string Path { get; private set; }
 
-        [ArgIgnore]
         public string Name { get; } = "cd";
 
         public ShellResult Execute( AppConfig config, object input )
