@@ -19,6 +19,9 @@ namespace Lumi.Core
         [JsonProperty( nameof( ColorScheme.Foreground ) )]
         private Color? _foreground;
 
+        [JsonProperty( nameof( ColorScheme.PromptMachineNameColor ) )]
+        private Color? _machineColor;
+
         [JsonProperty( nameof( ColorScheme.NoticeColor ) )]
         private Color? _noticeColor;
 
@@ -30,9 +33,6 @@ namespace Lumi.Core
 
         [JsonProperty( nameof( ColorScheme.WarningColor ) )]
         private Color? _warningColor;
-
-        [JsonProperty( nameof( ColorScheme.PromptMachineNameColor ) )]
-        private Color? _machineColor;
 
         [JsonIgnore]
         public Color PromptMachineNameColor

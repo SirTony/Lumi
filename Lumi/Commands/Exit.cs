@@ -20,7 +20,7 @@ namespace Lumi.Commands
         public bool Help { get; private set; }
 
         [ArgPosition( 0 )]
-        public int ExitCode { get; private set; } = 0;
+        public int ExitCode { get; } = 0;
 
         [ArgIgnore]
         public string Name { get; } = "exit";

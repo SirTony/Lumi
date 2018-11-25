@@ -7,9 +7,9 @@ namespace Lumi.CommandLine.Models
 {
     internal abstract class CommandLineModel
     {
+        private readonly int _positionAdjust;
         public HashSet<PositionalArgumentModel> PositionalArguments { get; }
         public HashSet<NamedArgumentModel> NamedArguments { get; }
-        private readonly int _positionAdjust;
 
         protected internal CommandLineModel( int positionAdjust = 0 )
         {

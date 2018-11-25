@@ -26,6 +26,7 @@ namespace Lumi.Shell
                 throw new ProgramNotFoundException( name, null );
 
             var parsed = (ICommand) Args.Parse( commandType, args );
+
             // justification: ShellResult is a ref struct and can't be nullable
             // ReSharper disable once MergeConditionalExpression
             result = parsed is null ? ShellResult.Ok() : parsed.Execute( config, input );

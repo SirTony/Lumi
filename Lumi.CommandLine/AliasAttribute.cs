@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using EnsureThat;
 
 namespace Lumi.CommandLine
@@ -14,7 +10,7 @@ namespace Lumi.CommandLine
 
         public AliasAttribute( string name )
         {
-            Ensure.That( name, nameof(name) ).IsNotNullOrWhiteSpace();
+            Ensure.That( name, nameof( name ) ).IsNotNullOrWhiteSpace();
             this.Name = name;
         }
     }

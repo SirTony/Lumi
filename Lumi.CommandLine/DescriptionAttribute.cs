@@ -2,7 +2,9 @@
 
 namespace Lumi.CommandLine
 {
-    [AttributeUsage( AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Method  | AttributeTargets.Parameter )]
+    [AttributeUsage(
+        AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Method | AttributeTargets.Parameter
+    )]
     public sealed class DescriptionAttribute : Attribute
     {
         public string Description { get; }

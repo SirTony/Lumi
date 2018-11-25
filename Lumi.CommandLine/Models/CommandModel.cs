@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using EnsureThat;
 
 namespace Lumi.CommandLine.Models
@@ -10,7 +9,7 @@ namespace Lumi.CommandLine.Models
         public string Command { get; }
         public HashSet<string> Aliases { get; }
         public string DescriptionText { get; private set; }
-        public Action CallbackFunc { get; private set; }
+        public Func<object> CallbackFunc { get; private set; }
 
         public CommandModel( string command, int positionAdjust )
             : base( positionAdjust )
@@ -35,18 +34,10 @@ namespace Lumi.CommandLine.Models
             return this;
         }
 
-        public CommandModel Callback( Action action )
+        public CommandModel Callback( Func<object> fn )
         {
-            this.CallbackFunc = action;
+            this.CallbackFunc = fn;
             return this;
-        }
-
-        public bool Equals( CommandModel other )
-        {
-            if( Object.ReferenceEquals( null, other ) ) return false;
-            if( Object.ReferenceEquals( this, other ) ) return true;
-            return String.Equals( this.Command, other.Command, StringComparison.OrdinalIgnoreCase )
-                && this.Aliases.SetEquals( other.Aliases );
         }
 
         public override bool Equals( object obj )
@@ -60,10 +51,18 @@ namespace Lumi.CommandLine.Models
         {
             unchecked
             {
-                var hashCode = ( this.Command != null ? this.Command.GetHashCode() : 0 );
+                var hashCode = this.Command != null ? this.Command.GetHashCode() : 0;
                 hashCode = ( hashCode * 397 ) ^ ( this.Aliases != null ? this.Aliases.GetHashCode() : 0 );
                 return hashCode;
             }
+        }
+
+        public bool Equals( CommandModel other )
+        {
+            if( Object.ReferenceEquals( null, other ) ) return false;
+            if( Object.ReferenceEquals( this, other ) ) return true;
+            return String.Equals( this.Command, other.Command, StringComparison.OrdinalIgnoreCase )
+                && this.Aliases.SetEquals( other.Aliases );
         }
     }
 }

@@ -8,11 +8,18 @@ namespace Lumi.CommandLine
         public char ShortName { get; }
         public string LongName { get; }
 
+        public bool HasShortName => this.ShortName != default;
+        public bool HasLongName => this.LongName != null;
+
         public NamedAttribute( char shortName )
-            : this( shortName, null ) { }
+            : this( shortName, null )
+        {
+        }
 
         public NamedAttribute( string longName )
-            : this( default, longName ) { }
+            : this( default, longName )
+        {
+        }
 
         public NamedAttribute( char shortName, string longName )
         {

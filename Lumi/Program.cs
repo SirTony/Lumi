@@ -2,16 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Lumi.Core;
 using Lumi.Parsing;
 using Lumi.Shell;
 using Lumi.Shell.Parsing;
 using Lumi.Shell.Segments;
 using Newtonsoft.Json;
-using ArgExceptionPolicy = PowerArgs.ArgExceptionPolicy;
 using Args = PowerArgs.Args;
 using Console = Colorful.Console;
 
@@ -109,7 +106,7 @@ namespace Lumi
             else
                 Program.ExecuteCommand( command );
         }
-        
+
         private static void Run()
         {
             while( true )

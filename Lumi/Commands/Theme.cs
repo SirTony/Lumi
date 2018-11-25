@@ -2,10 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using Lumi.Core;
 using Lumi.Shell;
 using PowerArgs;
@@ -20,8 +16,19 @@ namespace Lumi.Commands
     public sealed class Theme : ICommand
     {
         private delegate void ApplyThemeDelegate( AppConfig config );
-        
+
         private static readonly IReadOnlyDictionary<string, ApplyThemeDelegate> BuiltInThemes;
+
+        [CustomHelpHook]
+        [ArgShortcut( "?" )]
+        [ArgShortcut( "h" )]
+        [ArgDescription( "Show this help screen." )]
+        public bool Help { get; private set; }
+
+        [ArgPosition( 0 )]
+        [ArgRequired]
+        [ArgShortcut( "t" )]
+        public string ThemeName { get; private set; }
 
         static Theme()
         {
@@ -33,49 +40,8 @@ namespace Lumi.Commands
                     config.ColorScheme.Apply();
                     Console.Clear();
                 },
-
                 ["windows"] = Theme.ApplyWindowsTheme
             };
-        }
-
-        [CustomHelpHook]
-        [ArgShortcut( "?" )]
-        [ArgShortcut( "h" )]
-        [ArgDescription( "Show this help screen." )]
-        public bool Help { get; private set; }
-
-        [ArgPosition( 0 ), ArgRequired, ArgShortcut( "t" )]
-        public string ThemeName { get; private set; }
-
-        [ArgIgnore]
-        public string Name { get; } = "theme";
-        
-        public ShellResult Execute( AppConfig config, object input )
-        {
-            ConsoleEx.WriteWarning(
-                "Due to a limitation within Windows, the console is limited to 16 distinct colours. "
-              + "If any of the new colours from the selected theme fail to show or colours are "
-              + "repeated/incorrect, you have exceeded the 16 colour limit. "
-              + "Simply restart the application to fix it."
-            );
-
-            if( !Prompt.YesNo( "Continue?", true ) ) return ShellResult.Ok();
-
-            if( Theme.BuiltInThemes.TryGetValue( this.ThemeName, out var applicator ) )
-                applicator( config );
-            else
-            {
-                var manager = ThemeManager.Load();
-                if( !manager.Themes.TryGetValue( this.ThemeName, out var theme ) )
-                    throw new KeyNotFoundException( $"Unknown theme '{this.ThemeName}'" );
-
-                config.ColorScheme = theme;
-                config.ColorScheme.Apply();
-            }
-            
-            Console.Clear();
-            config.Save();
-            return ShellResult.Ok();
         }
 
         // uses the Windows 10 window border colour to make the entire console window one solid colour.
@@ -107,6 +73,37 @@ namespace Lumi.Commands
 
             config.ColorScheme.Apply();
             Console.Clear();
+        }
+
+        [ArgIgnore]
+        public string Name { get; } = "theme";
+
+        public ShellResult Execute( AppConfig config, object input )
+        {
+            ConsoleEx.WriteWarning(
+                "Due to a limitation within Windows, the console is limited to 16 distinct colours. "
+              + "If any of the new colours from the selected theme fail to show or colours are "
+              + "repeated/incorrect, you have exceeded the 16 colour limit. "
+              + "Simply restart the application to fix it."
+            );
+
+            if( !Prompt.YesNo( "Continue?", true ) ) return ShellResult.Ok();
+
+            if( Theme.BuiltInThemes.TryGetValue( this.ThemeName, out var applicator ) )
+                applicator( config );
+            else
+            {
+                var manager = ThemeManager.Load();
+                if( !manager.Themes.TryGetValue( this.ThemeName, out var theme ) )
+                    throw new KeyNotFoundException( $"Unknown theme '{this.ThemeName}'" );
+
+                config.ColorScheme = theme;
+                config.ColorScheme.Apply();
+            }
+
+            Console.Clear();
+            config.Save();
+            return ShellResult.Ok();
         }
     }
 }

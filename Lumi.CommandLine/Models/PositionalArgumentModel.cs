@@ -7,20 +7,12 @@ namespace Lumi.CommandLine.Models
         private readonly int _adjust;
         public int Position { get; }
 
-        public int AdjustedPosition => this.Position - this._adjust;
+        public int AdjustedPosition => this.Position + this._adjust;
 
         public PositionalArgumentModel( int position, int adjust )
         {
             this.Position = position;
             this._adjust = adjust;
-        }
-
-        public bool Equals( PositionalArgumentModel other )
-        {
-            if( Object.ReferenceEquals( null, other ) ) return false;
-            if( Object.ReferenceEquals( this, other ) ) return true;
-            return this._adjust == other._adjust
-                && this.Position == other.Position;
         }
 
         public override bool Equals( object obj )
@@ -37,5 +29,13 @@ namespace Lumi.CommandLine.Models
 
         // a cheat for exception messages because im lazy
         public override string ToString() => $"at position {this.Position}";
+
+        public bool Equals( PositionalArgumentModel other )
+        {
+            if( Object.ReferenceEquals( null, other ) ) return false;
+            if( Object.ReferenceEquals( this, other ) ) return true;
+            return this._adjust == other._adjust
+                && this.Position == other.Position;
+        }
     }
 }

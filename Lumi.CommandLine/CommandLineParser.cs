@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using EnsureThat;
 using Lumi.CommandLine.Models;
 using Lumi.Core;
@@ -21,22 +16,21 @@ namespace Lumi.CommandLine
     {
         private static readonly Regex OptionRegex;
 
-        static CommandLineParser()
-        {
-            CommandLineParser.OptionRegex = new Regex(
-                @"^--?(?<Name>.+?)([=:](?<Value>.*?))?$",
-                RegexOptions.ExplicitCapture | RegexOptions.Compiled
-            );
-        }
+        static CommandLineParser() => CommandLineParser.OptionRegex = new Regex(
+                                          @"^--?(?<Name>.+?)([=:](?<Value>.*?))?$",
+                                          RegexOptions.ExplicitCapture | RegexOptions.Compiled
+                                      );
 
-        private static void ParseArguments( IReadOnlyList<string> args, Type applicationType, Action<CommandLineSyntax> setup )
+        private static int ParseArguments(
+            IReadOnlyList<string> args, Type applicationType, object instance, Action<CommandLineSyntax> setup
+        )
         {
-            if( args is null || args.Count == 0 ) return;
             Ensure.That( setup, nameof( setup ) ).IsNotNull();
 
             var syntax = new CommandLineSyntax( applicationType );
             setup( syntax );
 
+            var exitCode = 0;
             var commandProcessed = false;
             var arguments = CommandLineParser.ProcessCommandLine( args ).ToArray();
             var helpRequested = arguments.Any( IsHelpRequest );
@@ -58,7 +52,7 @@ namespace Lumi.CommandLine
                         foreach( var child in arguments.Skip( 1 ) )
                             ProcessArgument( child, currentCommand );
 
-                        currentCommand.CallbackFunc();
+                        if( currentCommand.CallbackFunc() is int i ) exitCode = i;
                         commandProcessed = true;
                         break;
                     }
@@ -72,6 +66,21 @@ namespace Lumi.CommandLine
                 if( helpRequested ) CommandLineParser.PrintHelpScreen( syntax, currentCommand );
             }
 
+            if( commandProcessed ) return exitCode;
+            const BindingFlags MethodFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+
+            var entryPoint = applicationType.GetMethods( MethodFlags ).FirstOrDefault( x => x.Name == "Main" );
+
+            if( entryPoint == null ) return exitCode;
+            if( entryPoint.ReturnType != typeof( int ) && entryPoint.ReturnType != typeof( void ) )
+                throw new InvalidOperationException( "Entry point method must return int or void" );
+
+            if( entryPoint.GetParameters().Length > 0 )
+                throw new InvalidOperationException( "Entry point method cannot have parameters" );
+
+            if( entryPoint.Invoke( instance, null ) is int j ) exitCode = j;
+            return exitCode;
+
             void ProcessArgument( CommandLineOption arg, CommandLineModel currentModel )
             {
                 switch( arg )
@@ -84,8 +93,10 @@ namespace Lumi.CommandLine
                         );
 
                         if( !success )
-                            throw new CommandLineException( $"Unexpected positional argument at position {positional.Position}" );
-                        
+                            throw new CommandLineException(
+                                $"Unexpected positional argument at position {positional.Position}"
+                            );
+
                         model.Assigner( model.Parser( positional.Value ) );
                         break;
                     }
@@ -118,9 +129,11 @@ namespace Lumi.CommandLine
                         );
 
                         if( !success )
+                        {
                             throw new CommandLineException(
                                 $"Unexpected argument -{named.Name}{( named.WasBundled ? $" as part of bundle -{named.Bundle}" : String.Empty )}"
                             );
+                        }
 
                         model.Assigner( model.Parser( named.Value ) );
                         break;
@@ -147,11 +160,15 @@ namespace Lumi.CommandLine
             {
                 return model
                     => model.Command.Equals( name, StringComparison.OrdinalIgnoreCase )
-                    || model.Aliases.TryGetValue( name, out _ );
+                    || model.Aliases.TryGetValue( name, out var _ );
             }
         }
 
-        [SuppressMessage( "ReSharper", "PossibleMultipleEnumeration", Justification = "We don't really care about performance here." )]
+        [SuppressMessage(
+            "ReSharper",
+            "PossibleMultipleEnumeration",
+            Justification = "We don't really care about performance here."
+        )]
         private static void PrintHelpScreen( CommandLineSyntax syntax, CommandModel currentCommand )
         {
             var entry = Assembly.GetEntryAssembly();
@@ -164,7 +181,7 @@ namespace Lumi.CommandLine
 
             var usage = syntax.ApplicationType.Get<UsageAttribute>()?.Usage
                      ?? Path.GetFileName( AppConfig.ExecutablePath );
-            
+
             Console.Error.Write( "USAGE: {0} ", usage );
 
             if( syntax.Commands.Count > 0 )
@@ -242,7 +259,7 @@ namespace Lumi.CommandLine
                     );
 
                     if( String.IsNullOrWhiteSpace( item.DescriptionText ) ) continue;
-                    
+
                     Console.Error.WriteLine( "    {0}", new string( '─', flags.Length ) );
                     Console.Error.WriteLine( "    {0}", ShellUtility.WordWrap( item.DescriptionText, 4 ) );
                     Console.Error.WriteLine();
@@ -295,10 +312,17 @@ namespace Lumi.CommandLine
             }
         }
 
-        public static T ParseArguments<T>( IReadOnlyList<string> args, params object[] ctorArgs )
-            => (T) CommandLineParser.ParseArguments( typeof( T ), args, ctorArgs );
+        public static ( int ExitCode, T Object ) ParseArguments<T>(
+            IReadOnlyList<string> args, params object[] ctorArgs
+        )
+        {
+            var ( code, obj ) = CommandLineParser.ParseArguments( typeof( T ), args, ctorArgs );
+            return ( code, (T) obj );
+        }
 
-        public static object ParseArguments( Type type, IReadOnlyList<string> args, params object[] ctorArgs )
+        public static ( int ExitCode, object Object ) ParseArguments(
+            Type type, IReadOnlyList<string> args, params object[] ctorArgs
+        )
         {
             const BindingFlags MemberFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
@@ -313,25 +337,27 @@ namespace Lumi.CommandLine
             if( commands.Count > 0 && options.Any( x => x.Property.Has<PositionalAttribute>() ) )
                 throw new InvalidOperationException( "Cannot mix global positional arguments and commands" );
 
-            CommandLineParser.ParseArguments( args, type, SyntaxSetup );
-            
+            var code = CommandLineParser.ParseArguments( args, type, instance, SyntaxSetup );
+
             foreach( var option in options )
             {
                 if( !option.Property.Has<RequiredAttribute>() ) continue;
                 if( !option.Handled ) throw new CommandLineException( $"Missing required argument {option}" );
             }
 
-            return instance;
+            return ( code, instance );
 
             void SyntaxSetup( CommandLineSyntax syntax )
             {
                 foreach( var command in commands )
                 {
                     var cmdName = command.GetCustomAttribute<CommandAttribute>()?.Name ?? command.Name;
-                    if( command.ReturnType != typeof( void ) )
+                    if( command.ReturnType != typeof( int ) && command.ReturnType != typeof( void ) )
+                    {
                         throw new InvalidOperationException(
-                            $"Method for command {cmdName} must return void"
+                            $"Method for command {cmdName} must return int or void"
                         );
+                    }
 
                     var aliases = command.GetCustomAttributes<AliasAttribute>()
                                          .Select( x => x.Name )
@@ -347,23 +373,50 @@ namespace Lumi.CommandLine
                     if( parameters.Any( x => x.IsOut || x.IsRetval || x.IsLcid ) )
                         throw new InvalidOperationException( "out, retval, and lcid parameters are not supported" );
 
-                    var values = new object[parameters.Length];
-                    cmd.Callback( () => command.Invoke( instance, values ) );
+                    var values = new ( object Value, bool Handled, ParameterInfo Parameter )[parameters.Length];
+                    cmd.Callback(
+                        () => {
+                            var missing = values.Length == 0
+                                              ? default
+                                              : values.FirstOrDefault(
+                                                  x => x.Parameter.Has<RequiredAttribute>() && !x.Handled
+                                              );
+
+                            if( missing == default )
+                                return command.Invoke( instance, values.Select( x => x.Value ).ToArray() );
+
+                            var name = missing.Parameter.Get<PositionalAttribute>()?.ToString()
+                                    ?? missing.Parameter.Get<NamedAttribute>()?.ToString();
+
+                            throw new CommandLineException(
+                                $"Command {cmd.Command} is missing required option {name}"
+                            );
+                        }
+                    );
 
                     foreach( var param in parameters )
                     {
+                        values[param.Position] = ( null, false, param );
                         var named = param.GetCustomAttribute<NamedAttribute>();
                         var positional = param.GetCustomAttribute<PositionalAttribute>();
 
                         if( named != null && positional != null )
+                        {
                             throw new InvalidOperationException(
                                 $"Parameter {param.Name} for command {cmdName} cannot be both positional and named"
                             );
+                        }
 
                         if( named is null && positional is null )
-                            values[param.Position] = param.IsOptional && param.HasDefaultValue
-                                                         ? param.DefaultValue
-                                                         : Activator.CreateInstance( param.ParameterType );
+                        {
+                            values[param.Position] = (
+                                                         param.IsOptional && param.HasDefaultValue
+                                                             ? param.DefaultValue
+                                                             : Activator.CreateInstance( param.ParameterType ),
+                                                         true,
+                                                         param
+                                                     );
+                        }
 
                         ArgumentModel model = null;
 
@@ -374,10 +427,12 @@ namespace Lumi.CommandLine
                         if( model is null ) throw new NotSupportedException();
 
                         model.As( param.ParameterType )
-                               .Description( param.Get<DescriptionAttribute>()?.Description )
-                               .Required( param.Has<RequiredAttribute>() )
-                               .Default( param.HasDefaultValue ? param.DefaultValue : null )
-                               .ValueAssigner( x => values[param.Position] = x );
+                             .Description( param.Get<DescriptionAttribute>()?.Description )
+                             .Required( param.Has<RequiredAttribute>() )
+                             .Default( param.HasDefaultValue ? param.DefaultValue : null )
+                             .ValueAssigner(
+                                  x => values[param.Position] = ( x, true, param )
+                              );
 
                         if( !param.Has<ValueParserAttribute>() )
                         {
@@ -450,7 +505,7 @@ namespace Lumi.CommandLine
                     if( item == "--" ) yield break;
 
                     var match = CommandLineParser.OptionRegex.Match( item );
-                    var value = String.IsNullOrWhiteSpace( match.Groups["Value"]?.Value )
+                    var value = match.Success && String.IsNullOrWhiteSpace( match.Groups["Value"]?.Value )
                                     ? GetValueFromEnumerator( i )
                                     : match.Groups["Name"].Value;
 

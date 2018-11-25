@@ -7,12 +7,7 @@ using Newtonsoft.Json;
 
 namespace Lumi.Core
 {
-    public enum PromptStyle
-    {
-        Default,
-        Unix,
-        Windows,
-    }
+    public enum PromptStyle { Default, Unix, Windows }
 
     [JsonObject( MemberSerialization = MemberSerialization.OptIn )]
     public sealed class AppConfig
@@ -89,7 +84,7 @@ namespace Lumi.Core
                 ColorScheme = new ColorScheme(),
                 Persistent = new Dictionary<string, object>( StringComparer.OrdinalIgnoreCase ),
                 Temporary = new Dictionary<string, object>( StringComparer.OrdinalIgnoreCase ),
-                DisabledCommands = new HashSet<string>( StringComparer.OrdinalIgnoreCase ),
+                DisabledCommands = new HashSet<string>( StringComparer.OrdinalIgnoreCase )
             };
 
             @default.Save();
